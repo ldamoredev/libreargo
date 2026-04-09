@@ -97,6 +97,43 @@ export function validateHubConfig(config: unknown): HubConfig {
   ) {
     throw new InvalidHubConfigError("El hub respondió con datos inválidos");
   }
+  if (
+    !c.sensors.every((sensor) => {
+      if (!isPlainObject(sensor)) {
+        return false;
+      }
+      if (
+        typeof sensor.type !== "string" ||
+        typeof sensor.enabled !== "boolean" ||
+        !isPlainObject(sensor.config)
+      ) {
+        return false;
+      }
+      return (
+        sensor.zones === undefined ||
+        (Array.isArray(sensor.zones) &&
+          sensor.zones.every((zone) => typeof zone === "string"))
+      );
+    }) ||
+    !c.relays.every((relay) => {
+      if (!isPlainObject(relay)) {
+        return false;
+      }
+      if (
+        typeof relay.type !== "string" ||
+        typeof relay.enabled !== "boolean" ||
+        !isPlainObject(relay.config)
+      ) {
+        return false;
+      }
+      return (
+        typeof relay.config.address === "number" &&
+        typeof relay.config.alias === "string"
+      );
+    })
+  ) {
+    throw new InvalidHubConfigError("El hub respondió con datos inválidos");
+  }
   return c as HubConfig;
 }
 

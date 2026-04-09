@@ -77,7 +77,7 @@ export class InvalidHubConfigError extends Error {
 }
 
 export function validateHubConfig(config: unknown): HubConfig {
-  if (!config || typeof config !== "object") {
+  if (!isPlainObject(config)) {
     throw new InvalidHubConfigError("El hub respondió con datos inválidos");
   }
   const c = config as Partial<HubConfig>;
@@ -87,5 +87,23 @@ export function validateHubConfig(config: unknown): HubConfig {
   if (typeof c.incubator_name !== "string" || c.incubator_name.trim() === "") {
     throw new InvalidHubConfigError("El hub respondió sin nombre");
   }
+  if (
+    typeof c.min_temperature !== "number" ||
+    typeof c.max_temperature !== "number" ||
+    typeof c.min_hum !== "number" ||
+    typeof c.max_hum !== "number" ||
+    !Array.isArray(c.sensors) ||
+    !Array.isArray(c.relays)
+  ) {
+    throw new InvalidHubConfigError("El hub respondió con datos inválidos");
+  }
   return c as HubConfig;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }

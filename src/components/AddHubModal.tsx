@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Modal,
   View,
@@ -6,83 +7,153 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { COLORS } from "../constants";
-import type { ConnectionMode } from "../types";
+import { COLORS, DIRECT_MODE_IP } from "../constants";
+import type { ConnectionMode, Hub } from "../types";
+import {
+  getConfig,
+  validateHubConfig,
+  InvalidHubConfigError,
+} from "../services/hubDataService";
+
+type AddHubStep = "confirm-switch" | "searching" | "error";
 
 interface AddHubModalProps {
   readonly visible: boolean;
-  readonly mode: ConnectionMode;
-  readonly loading: boolean;
-  readonly onConfirm: () => void;
+  readonly initialMode: ConnectionMode;
+  readonly onAdded: (hub: Hub) => void;
   readonly onCancel: () => void;
+  readonly onSwitchToDirecto: () => void;
+}
+
+function initialStep(mode: ConnectionMode): AddHubStep {
+  return mode === "online" ? "confirm-switch" : "searching";
 }
 
 export function AddHubModal({
   visible,
-  mode,
-  loading,
-  onConfirm,
+  initialMode,
+  onAdded,
   onCancel,
+  onSwitchToDirecto,
 }: AddHubModalProps) {
-  const isOnline = mode === "online";
+  const [step, setStep] = useState<AddHubStep>(() => initialStep(initialMode));
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  useEffect(() => {
+    if (visible) {
+      setStep(initialStep(initialMode));
+      setErrorMessage("");
+    }
+  }, [visible, initialMode]);
+
+  useEffect(() => {
+    if (!visible || step !== "searching") {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const rawConfig = await getConfig(DIRECT_MODE_IP);
+        const config = validateHubConfig(rawConfig);
+
+        if (cancelled) {
+          return;
+        }
+
+        const hub: Hub = {
+          hash: config.hash,
+          name: config.incubator_name,
+          ip: DIRECT_MODE_IP,
+          status: "conectado",
+          addedAt: new Date().toISOString(),
+        };
+
+        onAdded(hub);
+      } catch (error: unknown) {
+        if (cancelled) {
+          return;
+        }
+
+        const message =
+          error instanceof InvalidHubConfigError
+            ? error.message
+            : "No se pudo conectar al hub. Verificá la conexión Wi-Fi.";
+
+        setErrorMessage(message);
+        setStep("error");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, step, onAdded]);
+
+  const handleConfirmSwitch = () => {
+    onSwitchToDirecto();
+    setStep("searching");
+  };
+
+  const handleRetry = () => {
+    setErrorMessage("");
+    setStep("searching");
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.card}>
-          {isOnline ? (
+          {step === "confirm-switch" && (
             <>
               <Text style={styles.title}>Cambiar a modo Directo</Text>
               <Text style={styles.body}>
-                Para agregar un hub, necesitas estar conectado directamente a su
-                red Wi-Fi. Se cambiará al modo Directo para completar el alta.
+                Para agregar un hub necesitamos pasar a modo Directo.
+                Asegurate de estar conectado al Wi-Fi del hub (red tipo
+                "moni-XXXX") y confirmá para continuar.
               </Text>
               <View style={styles.buttons}>
-                <TouchableOpacity
-                  style={styles.btnCancel}
-                  onPress={onCancel}
-                >
+                <TouchableOpacity style={styles.btnCancel} onPress={onCancel}>
                   <Text style={styles.btnCancelText}>Cancelar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.btnConfirm}
-                  onPress={onConfirm}
+                  onPress={handleConfirmSwitch}
                 >
-                  <Text style={styles.btnConfirmText}>
-                    Cambiar a Directo
-                  </Text>
+                  <Text style={styles.btnConfirmText}>Continuar</Text>
                 </TouchableOpacity>
               </View>
             </>
-          ) : (
+          )}
+
+          {step === "searching" && (
             <>
-              <Text style={styles.title}>Agregar Hub</Text>
+              <Text style={styles.title}>Buscando hub...</Text>
               <Text style={styles.body}>
-                Asegurate de estar conectado al Wi-Fi del hub (red tipo
-                "moni-XXXX") y presioná "Agregar" para registrarlo.
+                Consultando el hub conectado por Wi-Fi. Esto puede tardar unos
+                segundos.
               </Text>
-              {loading ? (
-                <ActivityIndicator
-                  size="large"
-                  color={COLORS.primary}
-                  style={styles.loader}
-                />
-              ) : (
-                <View style={styles.buttons}>
-                  <TouchableOpacity
-                    style={styles.btnCancel}
-                    onPress={onCancel}
-                  >
-                    <Text style={styles.btnCancelText}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.btnConfirm}
-                    onPress={onConfirm}
-                  >
-                    <Text style={styles.btnConfirmText}>Agregar</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+              <ActivityIndicator
+                size="large"
+                color={COLORS.primary}
+                style={styles.loader}
+              />
+            </>
+          )}
+
+          {step === "error" && (
+            <>
+              <Text style={styles.title}>No se pudo agregar el hub</Text>
+              <Text style={styles.body}>{errorMessage}</Text>
+              <View style={styles.buttons}>
+                <TouchableOpacity style={styles.btnCancel} onPress={onCancel}>
+                  <Text style={styles.btnCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.btnConfirm} onPress={handleRetry}>
+                  <Text style={styles.btnConfirmText}>Reintentar</Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
         </View>

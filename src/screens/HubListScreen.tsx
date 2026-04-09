@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { View, FlatList, Text, StyleSheet, Alert } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { COLORS, DIRECT_MODE_IP } from "../constants";
+import { COLORS } from "../constants";
 import { useHubStore } from "../stores/hubStore";
 import {
   ConnectionModeSwitch,
@@ -9,7 +9,6 @@ import {
   FAB,
   AddHubModal,
 } from "../components";
-import { getConfig } from "../services/hubDataService";
 import type { Hub } from "../types";
 import type { RootStackParamList } from "../navigation/types";
 
@@ -19,7 +18,6 @@ export function HubListScreen({ navigation }: Props) {
   const { hubs, connectionMode, setConnectionMode, addHub, selectHub } =
     useHubStore();
   const [modalVisible, setModalVisible] = useState(false);
-  const [addingHub, setAddingHub] = useState(false);
 
   const handleHubPress = useCallback(
     (hub: Hub) => {
@@ -30,6 +28,7 @@ export function HubListScreen({ navigation }: Props) {
         );
         return;
       }
+
       selectHub(hub.hash);
       navigation.navigate("HubHome", { hubHash: hub.hash });
     },
@@ -40,39 +39,22 @@ export function HubListScreen({ navigation }: Props) {
     setModalVisible(true);
   }, []);
 
-  const handleModalConfirm = useCallback(async () => {
-    if (connectionMode === "online") {
-      // Cambia a modo directo y cierra el modal.
-      // El usuario deberá presionar "+" de nuevo estando en modo directo.
-      setConnectionMode("directo");
-      setModalVisible(false);
-      return;
-    }
-
-    // Modo directo: simula consulta a GET /config
-    setAddingHub(true);
-    try {
-      const config = await getConfig(DIRECT_MODE_IP);
-      const newHub: Hub = {
-        hash: config.hash,
-        name: config.incubator_name,
-        ip: DIRECT_MODE_IP,
-        status: "conectado",
-        addedAt: new Date().toISOString(),
-      };
-      addHub(newHub);
-      setModalVisible(false);
-      Alert.alert("Hub agregado", `"${config.incubator_name}" fue registrado.`);
-    } catch {
-      Alert.alert("Error", "No se pudo conectar al hub. Verificá la conexión Wi-Fi.");
-    } finally {
-      setAddingHub(false);
-    }
-  }, [connectionMode, setConnectionMode, addHub]);
-
   const handleModalCancel = useCallback(() => {
     setModalVisible(false);
   }, []);
+
+  const handleSwitchToDirecto = useCallback(() => {
+    setConnectionMode("directo");
+  }, [setConnectionMode]);
+
+  const handleHubAdded = useCallback(
+    (hub: Hub) => {
+      addHub(hub);
+      setModalVisible(false);
+      Alert.alert("Hub agregado", `"${hub.name}" fue registrado.`);
+    },
+    [addHub]
+  );
 
   return (
     <View style={styles.container}>
@@ -109,10 +91,10 @@ export function HubListScreen({ navigation }: Props) {
 
       <AddHubModal
         visible={modalVisible}
-        mode={connectionMode}
-        loading={addingHub}
-        onConfirm={handleModalConfirm}
+        initialMode={connectionMode}
+        onAdded={handleHubAdded}
         onCancel={handleModalCancel}
+        onSwitchToDirecto={handleSwitchToDirecto}
       />
     </View>
   );

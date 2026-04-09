@@ -7,26 +7,40 @@ import {
   Pressable,
 } from "react-native";
 import { COLORS } from "../constants";
+import type { Hub } from "../types";
+
+type MenuItemKey =
+  | "Inicio"
+  | "Sensores"
+  | "Actuadores"
+  | "Alarmas"
+  | "Cultivos"
+  | "Recomendaciones";
 
 interface MenuItem {
   readonly label: string;
-  readonly key: string;
-  readonly disabled?: boolean;
+  readonly key: MenuItemKey;
+  readonly requiresActiveHub: boolean;
 }
 
 const MENU_ITEMS: readonly MenuItem[] = [
-  { label: "Inicio", key: "Inicio" },
-  { label: "Sensores", key: "Sensores" },
-  { label: "Actuadores", key: "Actuadores" },
-  { label: "Alarmas", key: "Alarmas" },
-  { label: "Cultivos", key: "Cultivos" },
-  { label: "Recomendaciones", key: "Recomendaciones" },
+  { label: "Inicio", key: "Inicio", requiresActiveHub: false },
+  { label: "Sensores", key: "Sensores", requiresActiveHub: true },
+  { label: "Actuadores", key: "Actuadores", requiresActiveHub: true },
+  { label: "Alarmas", key: "Alarmas", requiresActiveHub: true },
+  { label: "Cultivos", key: "Cultivos", requiresActiveHub: false },
+  {
+    label: "Recomendaciones",
+    key: "Recomendaciones",
+    requiresActiveHub: false,
+  },
 ];
 
 interface MenuDrawerProps {
   readonly visible: boolean;
   readonly onClose: () => void;
-  readonly onSelect: (key: string) => void;
+  readonly onSelect: (key: MenuItemKey) => void;
+  readonly activeHub: Hub | null;
   readonly activeKey?: string;
 }
 
@@ -34,6 +48,7 @@ export function MenuDrawer({
   visible,
   onClose,
   onSelect,
+  activeHub,
   activeKey,
 }: MenuDrawerProps) {
   return (
@@ -48,28 +63,30 @@ export function MenuDrawer({
           <Text style={styles.title}>LibreAgro</Text>
           <View style={styles.divider} />
           {MENU_ITEMS.map((item) => {
-            const isActive = item.key === activeKey;
+            const isDisabled = item.requiresActiveHub && activeHub === null;
+            const isActive = item.key === activeKey && !isDisabled;
+
             return (
               <TouchableOpacity
                 key={item.key}
                 style={[
                   styles.menuItem,
                   isActive && styles.menuItemActive,
-                  item.disabled && styles.menuItemDisabled,
+                  isDisabled && styles.menuItemDisabled,
                 ]}
                 onPress={() => {
-                  if (!item.disabled) {
+                  if (!isDisabled) {
                     onSelect(item.key);
                     onClose();
                   }
                 }}
-                disabled={item.disabled}
+                disabled={isDisabled}
               >
                 <Text
                   style={[
                     styles.menuItemText,
                     isActive && styles.menuItemTextActive,
-                    item.disabled && styles.menuItemTextDisabled,
+                    isDisabled && styles.menuItemTextDisabled,
                   ]}
                 >
                   {item.label}

@@ -64,3 +64,83 @@ export async function pingHub(_hubIp: string): Promise<boolean> {
   // Mock: siempre conectado para el primer hub
   return true;
 }
+
+// --- Validación de config del hub ---
+
+const HUB_ID_REGEX = /^[a-fA-F0-9]{8,}$/;
+
+export class InvalidHubConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidHubConfigError";
+  }
+}
+
+export function validateHubConfig(config: unknown): HubConfig {
+  if (!isPlainObject(config)) {
+    throw new InvalidHubConfigError("El hub respondió con datos inválidos");
+  }
+  const c = config as Partial<HubConfig>;
+  if (typeof c.hash !== "string" || !HUB_ID_REGEX.test(c.hash)) {
+    throw new InvalidHubConfigError("El hub respondió con un ID inválido");
+  }
+  if (typeof c.incubator_name !== "string" || c.incubator_name.trim() === "") {
+    throw new InvalidHubConfigError("El hub respondió sin nombre");
+  }
+  if (
+    typeof c.min_temperature !== "number" ||
+    typeof c.max_temperature !== "number" ||
+    typeof c.min_hum !== "number" ||
+    typeof c.max_hum !== "number" ||
+    !Array.isArray(c.sensors) ||
+    !Array.isArray(c.relays)
+  ) {
+    throw new InvalidHubConfigError("El hub respondió con datos inválidos");
+  }
+  if (
+    !c.sensors.every((sensor) => {
+      if (!isPlainObject(sensor)) {
+        return false;
+      }
+      if (
+        typeof sensor.type !== "string" ||
+        typeof sensor.enabled !== "boolean" ||
+        !isPlainObject(sensor.config)
+      ) {
+        return false;
+      }
+      return (
+        sensor.zones === undefined ||
+        (Array.isArray(sensor.zones) &&
+          sensor.zones.every((zone) => typeof zone === "string"))
+      );
+    }) ||
+    !c.relays.every((relay) => {
+      if (!isPlainObject(relay)) {
+        return false;
+      }
+      if (
+        typeof relay.type !== "string" ||
+        typeof relay.enabled !== "boolean" ||
+        !isPlainObject(relay.config)
+      ) {
+        return false;
+      }
+      return (
+        typeof relay.config.address === "number" &&
+        typeof relay.config.alias === "string"
+      );
+    })
+  ) {
+    throw new InvalidHubConfigError("El hub respondió con datos inválidos");
+  }
+  return c as HubConfig;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}

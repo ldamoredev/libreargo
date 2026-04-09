@@ -24,7 +24,7 @@ const simulateDelay = (ms = 300) =>
 
 export async function getConfig(_hubIp: string): Promise<HubConfig> {
   await simulateDelay();
-  return mockConfig;
+  return validateHubConfig(mockConfig);
 }
 
 export async function getActual(_hubIp: string): Promise<SensorData> {
@@ -63,4 +63,29 @@ export async function pingHub(_hubIp: string): Promise<boolean> {
   await simulateDelay(200);
   // Mock: siempre conectado para el primer hub
   return true;
+}
+
+// --- Validación de config del hub ---
+
+const HUB_ID_REGEX = /^[a-fA-F0-9]{8,}$/;
+
+export class InvalidHubConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidHubConfigError";
+  }
+}
+
+export function validateHubConfig(config: unknown): HubConfig {
+  if (!config || typeof config !== "object") {
+    throw new InvalidHubConfigError("El hub respondió con datos inválidos");
+  }
+  const c = config as Partial<HubConfig>;
+  if (typeof c.hash !== "string" || !HUB_ID_REGEX.test(c.hash)) {
+    throw new InvalidHubConfigError("El hub respondió con un ID inválido");
+  }
+  if (typeof c.incubator_name !== "string" || c.incubator_name.trim() === "") {
+    throw new InvalidHubConfigError("El hub respondió sin nombre");
+  }
+  return c as HubConfig;
 }

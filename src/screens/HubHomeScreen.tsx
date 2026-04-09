@@ -3,6 +3,7 @@ import {
   View,
   FlatList,
   Text,
+  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
@@ -14,6 +15,7 @@ import {
   AlarmSummaryCard,
   DeviceListItem,
   DeviceFilter,
+  ZoneFilterSheet,
 } from "../components";
 import type { FilterType } from "../components";
 import type { Device } from "../types";
@@ -21,33 +23,64 @@ import type { RootStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HubHome">;
 
+function resolveFilter(
+  initialFilter: RootStackParamList["HubHome"]["filter"]
+): FilterType {
+  return initialFilter === "sensores"
+    ? "sensores"
+    : initialFilter === "actuadores"
+      ? "actuadores"
+      : "todos";
+}
+
 export function HubHomeScreen({ navigation, route }: Props) {
   const { hubHash, filter: initialFilter } = route.params;
   const hub = useHubStore((s) => s.hubs.find((h) => h.hash === hubHash));
   const { alarms, devices, loading, error, loadHubData, clearData } =
     useHubDataStore();
-  const [filter, setFilter] = useState<FilterType>(
-    initialFilter === "sensores"
-      ? "sensores"
-      : initialFilter === "actuadores"
-        ? "actuadores"
-        : "todos"
+  const [filter, setFilter] = useState<FilterType>(() =>
+    resolveFilter(initialFilter)
   );
+  const [selectedZones, setSelectedZones] = useState<readonly string[]>([]);
+  const [zoneSheetVisible, setZoneSheetVisible] = useState(false);
+
+  useEffect(() => {
+    setFilter(resolveFilter(initialFilter));
+  }, [initialFilter]);
 
   useEffect(() => {
     if (hub) {
       loadHubData(hub.ip);
     }
+
     return () => {
       clearData();
     };
   }, [hub, loadHubData, clearData]);
 
+  const availableZones = useMemo(() => {
+    const zones = new Set<string>();
+    devices.forEach((device) => device.zones.forEach((zone) => zones.add(zone)));
+    return Array.from(zones).sort();
+  }, [devices]);
+
   const filteredDevices = useMemo(() => {
-    if (filter === "sensores") return devices.filter((d) => d.type === "sensor");
-    if (filter === "actuadores") return devices.filter((d) => d.type === "actuator");
-    return devices;
-  }, [devices, filter]);
+    const byType =
+      filter === "sensores"
+        ? devices.filter((device) => device.type === "sensor")
+        : filter === "actuadores"
+          ? devices.filter((device) => device.type === "actuator")
+          : devices;
+
+    if (selectedZones.length === 0) {
+      return byType;
+    }
+
+    const zoneSet = new Set(selectedZones);
+    return byType.filter((device) =>
+      device.zones.some((zone) => zoneSet.has(zone))
+    );
+  }, [devices, filter, selectedZones]);
 
   const handleDevicePress = useCallback(
     (device: Device) => {
@@ -69,6 +102,10 @@ export function HubHomeScreen({ navigation, route }: Props) {
   const handleAlarmsPress = useCallback(() => {
     navigation.navigate("Alarms", { hubHash });
   }, [navigation, hubHash]);
+
+  const zonesButtonDisabled = availableZones.length === 0;
+  const zonesButtonLabel =
+    selectedZones.length > 0 ? `Zonas (${selectedZones.length})` : "Zonas";
 
   if (!hub) {
     return (
@@ -112,17 +149,48 @@ export function HubHomeScreen({ navigation, route }: Props) {
         ListHeaderComponent={
           <>
             <AlarmSummaryCard alarms={alarms} onPress={handleAlarmsPress} />
-            <DeviceFilter active={filter} onChange={setFilter} />
+            <View style={styles.filtersRow}>
+              <DeviceFilter active={filter} onChange={setFilter} />
+              <TouchableOpacity
+                style={[
+                  styles.zonesBtn,
+                  selectedZones.length > 0 && styles.zonesBtnActive,
+                  zonesButtonDisabled && styles.zonesBtnDisabled,
+                ]}
+                onPress={() => setZoneSheetVisible(true)}
+                disabled={zonesButtonDisabled}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.zonesBtnText,
+                    selectedZones.length > 0 && styles.zonesBtnTextActive,
+                    zonesButtonDisabled && styles.zonesBtnTextDisabled,
+                  ]}
+                >
+                  {zonesButtonLabel}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyText}>
               No hay dispositivos {filter !== "todos" ? `de tipo "${filter}"` : ""}
+              {selectedZones.length > 0 ? " en las zonas seleccionadas" : ""}
             </Text>
           </View>
         }
         contentContainerStyle={styles.list}
+      />
+
+      <ZoneFilterSheet
+        visible={zoneSheetVisible}
+        availableZones={availableZones}
+        selectedZones={selectedZones}
+        onChange={setSelectedZones}
+        onClose={() => setZoneSheetVisible(false)}
       />
     </View>
   );
@@ -158,6 +226,35 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingBottom: 24,
+  },
+  filtersRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingRight: 16,
+  },
+  zonesBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: "#E0E0E0",
+  },
+  zonesBtnActive: {
+    backgroundColor: COLORS.primary,
+  },
+  zonesBtnDisabled: {
+    opacity: 0.4,
+  },
+  zonesBtnText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: COLORS.textSecondary,
+  },
+  zonesBtnTextActive: {
+    color: COLORS.surface,
+  },
+  zonesBtnTextDisabled: {
+    color: COLORS.textDisabled,
   },
   empty: {
     alignItems: "center",

@@ -109,9 +109,9 @@ export function AddHubModal({
             <>
               <Text style={styles.title}>Cambiar a modo Directo</Text>
               <Text style={styles.body}>
-                Para agregar un hub necesitamos pasar a modo Directo. Asegurate
-                de estar conectado al Wi-Fi del hub (red tipo &quot;moni-XXXX&quot;)
-                y confirmá para continuar.
+                Para agregar un hub necesitamos pasar a modo Directo.
+                Asegurate de estar conectado al Wi-Fi del hub (red tipo
+                "moni-XXXX") y confirmá para continuar.
               </Text>
               <View style={styles.buttons}>
                 <TouchableOpacity style={styles.btnCancel} onPress={onCancel}>

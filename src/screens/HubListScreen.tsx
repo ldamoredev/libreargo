@@ -81,8 +81,7 @@ export function HubListScreen({ navigation }: Props) {
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>Sin hubs registrados</Text>
             <Text style={styles.emptyBody}>
-              Conectate al Wi-Fi de un hub y presioná &quot;+&quot; para
-              agregarlo.
+              Conectate al Wi-Fi de un hub y presioná "+" para agregarlo.
             </Text>
           </View>
         }

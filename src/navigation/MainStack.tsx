@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { COLORS } from "../constants";
+import { useHubStore } from "../stores/hubStore";
 import {
   HubListScreen,
   HubHomeScreen,
@@ -13,6 +14,7 @@ import {
 import { HamburgerButton, MenuDrawer } from "../components";
 import { navigate } from "./navigationRef";
 import type { RootStackParamList } from "./types";
+import type { Hub } from "../types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -27,6 +29,11 @@ type MenuKey =
 export function MainStack() {
   const [menuVisible, setMenuVisible] = useState(false);
 
+  const activeHub = useHubStore((state): Hub | null => {
+    const hub = state.hubs.find((item) => item.hash === state.selectedHubHash);
+    return hub && hub.status === "conectado" ? hub : null;
+  });
+
   const openMenu = useCallback(() => setMenuVisible(true), []);
   const closeMenu = useCallback(() => setMenuVisible(false), []);
 
@@ -35,26 +42,43 @@ export function MainStack() {
     [openMenu]
   );
 
-  const handleMenuSelect = useCallback((key: string) => {
-    const menuKey = key as MenuKey;
-    switch (menuKey) {
-      case "Inicio":
-        navigate("HubList");
-        break;
-      case "Cultivos":
-        navigate("Crops");
-        break;
-      case "Recomendaciones":
-        navigate("Recommendations");
-        break;
-      case "Sensores":
-      case "Actuadores":
-      case "Alarmas":
-        // Se conectarán con hub seleccionado en fases futuras
-        navigate("HubList");
-        break;
-    }
-  }, []);
+  const handleMenuSelect = useCallback(
+    (key: MenuKey) => {
+      switch (key) {
+        case "Inicio":
+          navigate("HubList");
+          break;
+        case "Cultivos":
+          navigate("Crops");
+          break;
+        case "Recomendaciones":
+          navigate("Recommendations");
+          break;
+        case "Sensores":
+          if (activeHub) {
+            navigate("HubHome", {
+              hubHash: activeHub.hash,
+              filter: "sensores",
+            });
+          }
+          break;
+        case "Actuadores":
+          if (activeHub) {
+            navigate("HubHome", {
+              hubHash: activeHub.hash,
+              filter: "actuadores",
+            });
+          }
+          break;
+        case "Alarmas":
+          if (activeHub) {
+            navigate("Alarms", { hubHash: activeHub.hash });
+          }
+          break;
+      }
+    },
+    [activeHub]
+  );
 
   return (
     <>
@@ -106,6 +130,7 @@ export function MainStack() {
         visible={menuVisible}
         onClose={closeMenu}
         onSelect={handleMenuSelect}
+        activeHub={activeHub}
       />
     </>
   );

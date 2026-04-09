@@ -24,7 +24,7 @@ const simulateDelay = (ms = 300) =>
 
 export async function getConfig(_hubIp: string): Promise<HubConfig> {
   await simulateDelay();
-  return validateHubConfig(mockConfig);
+  return mockConfig;
 }
 
 export async function getActual(_hubIp: string): Promise<SensorData> {

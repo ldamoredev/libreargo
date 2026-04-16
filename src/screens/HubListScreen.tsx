@@ -123,7 +123,12 @@ export function HubListScreen({ navigation }: Props) {
         onSwitchToDirecto={handleSwitchToDirecto}
       />
 
-      <Modal visible={infoVisible} transparent animationType="fade">
+      <Modal
+        visible={infoVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInfoVisible(false)}
+      >
         <View style={styles.infoOverlay}>
           <View style={styles.infoCard}>
             <Text style={styles.infoTitle}>Modos de conexión</Text>

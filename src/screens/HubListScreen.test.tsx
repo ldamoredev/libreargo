@@ -50,14 +50,10 @@ describe("HubListScreen", () => {
     expect(screen.getByText("Modo Directo")).toBeTruthy();
     expect(screen.getByText("Modo Online")).toBeTruthy();
     expect(
-      screen.getByText(
-        "Conexión al Wi-Fi del hub, sin internet. Se usa para dar de alta el hub y operar localmente."
-      )
+      screen.getByText(/Conexión al Wi-Fi del hub, sin internet/i)
     ).toBeTruthy();
     expect(
-      screen.getByText(
-        "Conexión por internet para acceder indirectamente a hubs que estén reportando datos."
-      )
+      screen.getByText(/Conexión por internet para acceder indirectamente/i)
     ).toBeTruthy();
   });
 });

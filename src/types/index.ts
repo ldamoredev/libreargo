@@ -87,7 +87,7 @@ export interface HubConfig {
 
 // --- Alarma ---
 export type AlarmDataType = "temperature" | "humidity" | "co2" | "pressure";
-export type AlarmStatus = "active" | "postponed" | "acknowledged";
+export type AlarmStatus = "active" | "acknowledged";
 
 export interface Alarm {
   readonly id: string;

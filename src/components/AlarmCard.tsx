@@ -18,19 +18,16 @@ const LABEL_MAP: Record<string, string> = {
 
 const STATUS_LABEL: Record<string, string> = {
   active: "Activa",
-  postponed: "Pospuesta",
   acknowledged: "Reconocida",
 };
 
 const STATUS_COLOR: Record<string, string> = {
   active: COLORS.error,
-  postponed: COLORS.warning,
   acknowledged: COLORS.textSecondary,
 };
 
 interface AlarmCardProps {
   readonly alarm: Alarm;
-  readonly onPostpone: (id: string) => void;
   readonly onAcknowledge: (id: string) => void;
 }
 
@@ -40,7 +37,7 @@ function formatDate(iso: string): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function AlarmCard({ alarm, onPostpone, onAcknowledge }: AlarmCardProps) {
+export function AlarmCard({ alarm, onAcknowledge }: AlarmCardProps) {
   const unit = UNIT_MAP[alarm.dataType] ?? "";
   const label = LABEL_MAP[alarm.dataType] ?? alarm.dataType;
   const statusColor = STATUS_COLOR[alarm.status] ?? COLORS.textSecondary;
@@ -82,16 +79,10 @@ export function AlarmCard({ alarm, onPostpone, onAcknowledge }: AlarmCardProps) 
       {isActive && (
         <View style={styles.actions}>
           <TouchableOpacity
-            style={styles.btnSecondary}
-            onPress={() => onPostpone(alarm.id)}
-          >
-            <Text style={styles.btnSecondaryText}>Posponer</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
             style={styles.btnPrimary}
             onPress={() => onAcknowledge(alarm.id)}
           >
-            <Text style={styles.btnPrimaryText}>Acknowledge</Text>
+            <Text style={styles.btnPrimaryText}>Reconocer</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -171,18 +162,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     gap: 10,
     marginTop: 4,
-  },
-  btnSecondary: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  btnSecondaryText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    fontWeight: "500",
   },
   btnPrimary: {
     paddingVertical: 8,

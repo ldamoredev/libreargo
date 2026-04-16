@@ -35,6 +35,6 @@ export const mockAlarms: readonly Alarm[] = [
     alertValue: 36.0,
     currentValue: 36.5,
     zones: ["Zona A"],
-    status: "postponed",
+    status: "acknowledged",
   },
 ];

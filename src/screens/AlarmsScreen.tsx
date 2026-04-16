@@ -15,15 +15,6 @@ export function AlarmsScreen(_props: Props) {
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
-  const handlePostpone = useCallback((id: string) => {
-    // Mock: en el futuro se enviará al hub
-    useHubDataStore.setState((state) => ({
-      alarms: state.alarms.map((a) =>
-        a.id === id ? { ...a, status: "postponed" as const } : a
-      ),
-    }));
-  }, []);
-
   const handleAcknowledge = useCallback((id: string) => {
     useHubDataStore.setState((state) => ({
       alarms: state.alarms.map((a) =>
@@ -38,11 +29,7 @@ export function AlarmsScreen(_props: Props) {
         data={sorted}
         keyExtractor={(alarm) => alarm.id}
         renderItem={({ item }) => (
-          <AlarmCard
-            alarm={item}
-            onPostpone={handlePostpone}
-            onAcknowledge={handleAcknowledge}
-          />
+          <AlarmCard alarm={item} onAcknowledge={handleAcknowledge} />
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={

@@ -24,14 +24,11 @@ export function SensorDetailScreen({ route, navigation }: Props) {
   const { sensorType } = route.params;
   const actual = useHubDataStore((s) => s.actual);
   const config = useHubDataStore((s) => s.config);
+  const measurements = getSensorMeasurements(sensorType);
 
   const sensorConfig = config?.sensors.find(
     (s) => s.type === sensorType && s.enabled
   );
-
-  const measurements = getSensorMeasurements(sensorType) ?? [
-    { key: "temperature" as const, label: "Temperatura" },
-  ];
 
   const zones = sensorConfig?.zones ?? [];
 
@@ -54,6 +51,35 @@ export function SensorDetailScreen({ route, navigation }: Props) {
         <Text style={styles.link} onPress={() => navigation.goBack()}>
           Volver
         </Text>
+      </View>
+    );
+  }
+
+  if (!measurements) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.infoCard}>
+          <Text style={styles.sensorType}>{sensorType.toUpperCase()}</Text>
+          <Text style={styles.sensorSubtype}>Sensor</Text>
+          {zones.length > 0 && (
+            <View style={styles.zonesRow}>
+              {zones.map((z) => (
+                <View key={z} style={styles.zoneChip}>
+                  <Text style={styles.zoneChipText}>{z}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+        <View style={styles.unsupportedCard}>
+          <Text style={styles.unsupportedTitle}>Sensor no soportado</Text>
+          <Text style={styles.unsupportedBody}>
+            Este subtipo todavía no tiene una vista de detalle disponible.
+          </Text>
+          <Text style={styles.link} onPress={() => navigation.goBack()}>
+            Volver
+          </Text>
+        </View>
       </View>
     );
   }
@@ -214,6 +240,28 @@ const styles = StyleSheet.create({
   errorBannerText: {
     fontSize: 13,
     color: COLORS.error,
+  },
+  unsupportedCard: {
+    backgroundColor: COLORS.surface,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  unsupportedTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  unsupportedBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.textSecondary,
   },
   measurementsRow: {
     flexDirection: "row",

@@ -54,5 +54,6 @@ describe("AlarmsScreen", () => {
     fireEvent.press(screen.getByText("Reconocer"));
 
     expect(screen.getByText("Reconocida")).toBeTruthy();
+    expect(screen.queryByText("Reconocer")).toBeNull();
   });
 });

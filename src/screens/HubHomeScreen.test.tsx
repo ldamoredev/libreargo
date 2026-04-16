@@ -1,0 +1,153 @@
+import React from "react";
+import { render, waitFor } from "@testing-library/react-native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { HubHomeScreen } from "./HubHomeScreen";
+import { useHubStore } from "../stores/hubStore";
+import { useHubDataStore } from "../stores/hubDataStore";
+import type { Device, HubConfig, SensorData } from "../types";
+import type { RootStackParamList } from "../navigation/types";
+
+const mockDeviceListItem = jest.fn();
+
+jest.mock("../components", () => {
+  const actual = jest.requireActual("../components");
+
+  return {
+    ...actual,
+    AlarmSummaryCard: () => null,
+    DeviceFilter: () => null,
+    ZoneFilterSheet: () => null,
+    DeviceListItem: (props: unknown) => {
+      mockDeviceListItem(props);
+      return null;
+    },
+  };
+});
+
+type Props = NativeStackScreenProps<RootStackParamList, "HubHome">;
+
+function makeProps(): Props {
+  return {
+    navigation: { navigate: jest.fn() } as unknown as Props["navigation"],
+    route: {
+      key: "HubHome",
+      name: "HubHome",
+      params: { hubHash: "hub-1" },
+    } as Props["route"],
+  };
+}
+
+describe("HubHomeScreen", () => {
+  const sensor: Device = {
+    id: "sensor-scd30-0",
+    type: "sensor",
+    name: "SCD30",
+    subtype: "scd30",
+    zones: ["Zona A"],
+  };
+
+  const actuator: Device = {
+    id: "relay-1",
+    type: "actuator",
+    name: "Ventilacion",
+    subtype: "relay_2ch",
+    relayAddress: 1,
+    zones: ["Zona A"],
+  };
+
+  const config: HubConfig = {
+    incubator_name: "Hub Demo",
+    hash: "hub-1",
+    min_temperature: 37.3,
+    max_temperature: 37.7,
+    min_hum: 55,
+    max_hum: 65,
+    sensors: [],
+    relays: [],
+  };
+
+  const actual: SensorData = {
+    a_temperature: "25.5",
+    a_humidity: "60.0",
+    a_co2: "500",
+    a_pressure: "1013",
+    wifi_status: "ok",
+    errors: {
+      temperature: [],
+      humidity: [],
+      sensors: [],
+      wifi: [],
+      rotation: [],
+    },
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    useHubStore.setState({
+      hubs: [
+        {
+          hash: "hub-1",
+          name: "Hub Demo",
+          ip: "192.168.0.10",
+          status: "conectado",
+          addedAt: "2026-04-16T12:00:00Z",
+        },
+      ],
+      connectionMode: "directo",
+      selectedHubHash: null,
+    });
+
+    useHubDataStore.setState({
+      config,
+      actual,
+      relays: [],
+      alarms: [],
+      devices: [sensor, actuator],
+      loading: false,
+      error: null,
+      loadHubData: jest.fn(),
+      clearData: jest.fn(),
+    });
+  });
+
+  it("deriva y pasa el visual del sensor al item de dispositivos", async () => {
+    render(<HubHomeScreen {...makeProps()} />);
+
+    await waitFor(() => {
+      const renderedItems = mockDeviceListItem.mock.calls.map(
+        ([props]) =>
+          props as {
+            device: Device;
+            sensorVisual?: {
+              label: string;
+              unit: string;
+              min: number;
+              max: number;
+              current: number;
+            } | null;
+          }
+      );
+
+      expect(
+        renderedItems.find(({ device }) => device.id === sensor.id)
+      ).toMatchObject({
+        device: sensor,
+        sensorVisual: {
+          label: "Temperatura",
+          unit: "°C",
+          min: 37.3,
+          max: 37.7,
+          current: 25.5,
+        },
+      });
+
+      expect(
+        renderedItems.find(({ device }) => device.id === actuator.id)
+      ).toMatchObject({
+        device: actuator,
+        sensorVisual: null,
+      });
+    });
+  });
+});

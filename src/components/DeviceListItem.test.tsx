@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 import { DeviceListItem } from "./DeviceListItem";
 import type { Device, SensorRangeVisual } from "../types";
 
@@ -39,5 +40,42 @@ describe("DeviceListItem", () => {
     render(<DeviceListItem device={sensor} onPress={jest.fn()} />);
 
     expect(screen.queryByText("Temperatura")).toBeNull();
+  });
+
+  it("mantiene el marker dentro del track en los extremos", () => {
+    const { rerender } = render(
+      <DeviceListItem
+        device={sensor}
+        sensorVisual={{ ...visual, current: visual.min }}
+        onPress={jest.fn()}
+      />
+    );
+
+    const markerRail = screen.getByTestId("sensor-range-marker-rail");
+    const minMarker = screen.getByTestId("sensor-range-marker");
+
+    expect(StyleSheet.flatten(markerRail.props.style)).toMatchObject({
+      left: 6,
+      right: 6,
+    });
+    expect(StyleSheet.flatten(minMarker.props.style)).toMatchObject({
+      left: "0%",
+      transform: [{ translateX: -6 }],
+    });
+
+    rerender(
+      <DeviceListItem
+        device={sensor}
+        sensorVisual={{ ...visual, current: visual.max }}
+        onPress={jest.fn()}
+      />
+    );
+
+    const maxMarker = screen.getByTestId("sensor-range-marker");
+
+    expect(StyleSheet.flatten(maxMarker.props.style)).toMatchObject({
+      left: "100%",
+      transform: [{ translateX: -6 }],
+    });
   });
 });

@@ -2,6 +2,9 @@ import { View, Text, StyleSheet } from "react-native";
 import { COLORS } from "../constants";
 import type { SensorRangeVisual } from "../types";
 
+const MARKER_SIZE = 12;
+const MARKER_RADIUS = MARKER_SIZE / 2;
+
 interface SensorRangeIndicatorProps {
   readonly visual: SensorRangeVisual;
 }
@@ -27,7 +30,12 @@ export function SensorRangeIndicator({
         </Text>
       </View>
       <View style={styles.track}>
-        <View style={[styles.marker, { left: `${progress}%` }]} />
+        <View testID="sensor-range-marker-rail" style={styles.markerRail}>
+          <View
+            testID="sensor-range-marker"
+            style={[styles.marker, { left: `${progress}%` }]}
+          />
+        </View>
       </View>
       <View style={styles.footer}>
         <Text style={styles.bound}>
@@ -57,17 +65,21 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 999,
     backgroundColor: "#DDE8DD",
-    overflow: "hidden",
     position: "relative",
+  },
+  markerRail: {
+    ...StyleSheet.absoluteFillObject,
+    left: MARKER_RADIUS,
+    right: MARKER_RADIUS,
   },
   marker: {
     position: "absolute",
     top: -2,
-    marginLeft: -6,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: MARKER_SIZE,
+    height: MARKER_SIZE,
+    borderRadius: MARKER_RADIUS,
     backgroundColor: COLORS.primary,
+    transform: [{ translateX: -MARKER_RADIUS }],
   },
   footer: {
     flexDirection: "row",

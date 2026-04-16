@@ -2,57 +2,17 @@ import { useMemo } from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { COLORS } from "../constants";
+import {
+  ACTUAL_KEY_MAP,
+  READING_KEY_MAP,
+  SENSOR_MEASUREMENTS,
+  UNIT_MAP,
+} from "../features/sensors/sensorMeasurementCatalog";
 import { useHubDataStore } from "../stores/hubDataStore";
 import { mockReadings } from "../mocks";
-import type { SensorReading } from "../types";
 import type { RootStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SensorDetail">;
-
-const MEASUREMENT_MAP: Record<string, { key: keyof typeof UNIT_MAP; label: string }[]> = {
-  scd30: [
-    { key: "temperature", label: "Temperatura" },
-    { key: "humidity", label: "Humedad" },
-    { key: "co2", label: "CO2" },
-  ],
-  bme280: [
-    { key: "temperature", label: "Temperatura" },
-    { key: "humidity", label: "Humedad" },
-    { key: "pressure", label: "Presión" },
-  ],
-  capacitive: [{ key: "humidity", label: "Humedad" }],
-  onewire: [{ key: "temperature", label: "Temperatura" }],
-  modbus_th: [
-    { key: "temperature", label: "Temperatura" },
-    { key: "humidity", label: "Humedad" },
-  ],
-  modbus_7in1: [
-    { key: "temperature", label: "Temperatura" },
-    { key: "humidity", label: "Humedad" },
-  ],
-  hd38: [{ key: "co2", label: "CO2" }],
-};
-
-const UNIT_MAP = {
-  temperature: "°C",
-  humidity: "%",
-  co2: "ppm",
-  pressure: "hPa",
-} as const;
-
-const ACTUAL_KEY_MAP: Record<string, string> = {
-  temperature: "a_temperature",
-  humidity: "a_humidity",
-  co2: "a_co2",
-  pressure: "a_pressure",
-};
-
-const READING_KEY_MAP: Record<string, keyof SensorReading> = {
-  temperature: "temperature",
-  humidity: "humidity",
-  co2: "co2",
-  pressure: "pressure",
-};
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -69,7 +29,7 @@ export function SensorDetailScreen({ route, navigation }: Props) {
     (s) => s.type === sensorType && s.enabled
   );
 
-  const measurements = MEASUREMENT_MAP[sensorType] ?? [
+  const measurements = SENSOR_MEASUREMENTS[sensorType] ?? [
     { key: "temperature" as const, label: "Temperatura" },
   ];
 
@@ -142,9 +102,7 @@ export function SensorDetailScreen({ route, navigation }: Props) {
               <Text style={styles.measurementValue}>
                 {value != null ? value.toFixed(1) : "—"}
               </Text>
-              <Text style={styles.measurementUnit}>
-                {UNIT_MAP[key as keyof typeof UNIT_MAP] ?? ""}
-              </Text>
+              <Text style={styles.measurementUnit}>{UNIT_MAP[key] ?? ""}</Text>
             </View>
           );
         })}

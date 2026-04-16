@@ -47,6 +47,14 @@ export interface SensorReading {
   readonly pressure: number;
 }
 
+export interface SensorRangeVisual {
+  readonly label: string;
+  readonly unit: string;
+  readonly min: number;
+  readonly max: number;
+  readonly current: number;
+}
+
 // --- Actuador (Relé) ---
 export interface RelayState {
   readonly type: string;

@@ -1,22 +1,27 @@
 import type { Device, HubConfig, SensorData, SensorRangeVisual } from "../types";
 import {
   ACTUAL_KEY_MAP,
-  PRIMARY_VISUAL_MEASUREMENT,
-  SENSOR_MEASUREMENTS,
   UNIT_MAP,
+  getPrimaryVisualMeasurement,
+  type MeasurementKey,
 } from "../features/sensors/sensorMeasurementCatalog";
 
 function getRangeForMeasurement(
-  measurement: string,
+  measurement: MeasurementKey,
   config: HubConfig
 ): { min: number; max: number } | null {
-  if (measurement === "temperature") {
-    return { min: config.min_temperature, max: config.max_temperature };
+  switch (measurement) {
+    case "temperature":
+      return { min: config.min_temperature, max: config.max_temperature };
+    case "humidity":
+      return { min: config.min_hum, max: config.max_hum };
+    case "co2":
+    case "pressure":
+      return null;
   }
-  if (measurement === "humidity") {
-    return { min: config.min_hum, max: config.max_hum };
-  }
-  return null;
+
+  const exhaustiveCheck: never = measurement;
+  return exhaustiveCheck;
 }
 
 export function getSensorRangeVisual(
@@ -28,17 +33,13 @@ export function getSensorRangeVisual(
     return null;
   }
 
-  const measurement = PRIMARY_VISUAL_MEASUREMENT[device.subtype];
-  if (!measurement) {
+  const measurementMeta = getPrimaryVisualMeasurement(device.subtype);
+  if (!measurementMeta) {
     return null;
   }
 
-  const measurementMeta =
-    (SENSOR_MEASUREMENTS[device.subtype] ?? []).find(
-      (item) => item.key === measurement
-    ) ?? null;
-  const range = getRangeForMeasurement(measurement, config);
-  const actualKey = ACTUAL_KEY_MAP[measurement];
+  const range = getRangeForMeasurement(measurementMeta.key, config);
+  const actualKey = ACTUAL_KEY_MAP[measurementMeta.key];
   const current = Number.parseFloat(actual[actualKey]);
 
   if (
@@ -52,7 +53,7 @@ export function getSensorRangeVisual(
 
   return {
     label: measurementMeta.label,
-    unit: UNIT_MAP[measurement],
+    unit: UNIT_MAP[measurementMeta.key],
     min: range.min,
     max: range.max,
     current,

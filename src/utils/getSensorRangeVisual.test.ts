@@ -1,4 +1,5 @@
 import { getSensorRangeVisual } from "./getSensorRangeVisual";
+import { getPrimaryVisualMeasurement } from "../features/sensors/sensorMeasurementCatalog";
 import { mockConfig } from "../mocks/config";
 import { mockActual } from "../mocks/actual";
 import type { Device } from "../types";
@@ -45,5 +46,13 @@ describe("getSensorRangeVisual", () => {
     };
 
     expect(getSensorRangeVisual(device, mockConfig, mockActual)).toBeNull();
+  });
+
+  it("obtiene la medicion visual primaria desde el mismo catalogo del subtipo", () => {
+    expect(getPrimaryVisualMeasurement("capacitive")).toEqual({
+      key: "humidity",
+      label: "Humedad",
+      isPrimaryVisual: true,
+    });
   });
 });

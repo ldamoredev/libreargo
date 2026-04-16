@@ -5,8 +5,8 @@ import { COLORS } from "../constants";
 import {
   ACTUAL_KEY_MAP,
   READING_KEY_MAP,
-  SENSOR_MEASUREMENTS,
   UNIT_MAP,
+  getSensorMeasurements,
 } from "../features/sensors/sensorMeasurementCatalog";
 import { useHubDataStore } from "../stores/hubDataStore";
 import { mockReadings } from "../mocks";
@@ -29,7 +29,7 @@ export function SensorDetailScreen({ route, navigation }: Props) {
     (s) => s.type === sensorType && s.enabled
   );
 
-  const measurements = SENSOR_MEASUREMENTS[sensorType] ?? [
+  const measurements = getSensorMeasurements(sensorType) ?? [
     { key: "temperature" as const, label: "Temperatura" },
   ];
 
@@ -91,11 +91,8 @@ export function SensorDetailScreen({ route, navigation }: Props) {
       <View style={styles.measurementsRow}>
         {measurements.map(({ key, label }) => {
           const actualKey = ACTUAL_KEY_MAP[key];
-          const rawValue = actualKey
-            ? (actual as unknown as Record<string, unknown>)[actualKey]
-            : undefined;
-          const value =
-            typeof rawValue === "string" ? parseFloat(rawValue) : null;
+          const parsedValue = Number.parseFloat(actual[actualKey]);
+          const value = Number.isFinite(parsedValue) ? parsedValue : null;
           return (
             <View key={key} style={styles.measurementCard}>
               <Text style={styles.measurementLabel}>{label}</Text>

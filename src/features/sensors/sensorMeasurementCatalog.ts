@@ -25,8 +25,8 @@ const SENSOR_SUBTYPE_CATALOG: Record<
   },
   bme280: {
     measurements: [
-      { key: "temperature", label: "Temperatura", isPrimaryVisual: true },
-      { key: "humidity", label: "Humedad" },
+      { key: "temperature", label: "Temperatura" },
+      { key: "humidity", label: "Humedad", isPrimaryVisual: true },
       { key: "pressure", label: "Presión" },
     ],
   },

@@ -38,11 +38,19 @@ function makeProps(): Props {
 }
 
 describe("HubHomeScreen", () => {
-  const sensor: Device = {
+  const scd30Sensor: Device = {
     id: "sensor-scd30-0",
     type: "sensor",
     name: "SCD30",
     subtype: "scd30",
+    zones: ["Zona A"],
+  };
+
+  const onewireSensor: Device = {
+    id: "sensor-onewire-0",
+    type: "sensor",
+    name: "1-Wire",
+    subtype: "onewire",
     zones: ["Zona A"],
   };
 
@@ -103,7 +111,7 @@ describe("HubHomeScreen", () => {
       actual,
       relays: [],
       alarms: [],
-      devices: [sensor, actuator],
+      devices: [scd30Sensor, actuator],
       loading: false,
       error: null,
       loadHubData: jest.fn(),
@@ -130,9 +138,9 @@ describe("HubHomeScreen", () => {
       );
 
       expect(
-        renderedItems.find(({ device }) => device.id === sensor.id)
+        renderedItems.find(({ device }) => device.id === scd30Sensor.id)
       ).toMatchObject({
-        device: sensor,
+        device: scd30Sensor,
         sensorVisual: {
           label: "Temperatura",
           unit: "°C",
@@ -146,6 +154,52 @@ describe("HubHomeScreen", () => {
         renderedItems.find(({ device }) => device.id === actuator.id)
       ).toMatchObject({
         device: actuator,
+        sensorVisual: null,
+      });
+    });
+  });
+
+  it("omite el visual cuando varios sensores renderizados comparten la misma metrica primaria", async () => {
+    useHubDataStore.setState({
+      config,
+      actual,
+      relays: [],
+      alarms: [],
+      devices: [scd30Sensor, onewireSensor, actuator],
+      loading: false,
+      error: null,
+      loadHubData: jest.fn(),
+      clearData: jest.fn(),
+    });
+
+    render(<HubHomeScreen {...makeProps()} />);
+
+    await waitFor(() => {
+      const renderedItems = mockDeviceListItem.mock.calls.map(
+        ([props]) =>
+          props as {
+            device: Device;
+            sensorVisual?: {
+              label: string;
+              unit: string;
+              min: number;
+              max: number;
+              current: number;
+            } | null;
+          }
+      );
+
+      expect(
+        renderedItems.find(({ device }) => device.id === scd30Sensor.id)
+      ).toMatchObject({
+        device: scd30Sensor,
+        sensorVisual: null,
+      });
+
+      expect(
+        renderedItems.find(({ device }) => device.id === onewireSensor.id)
+      ).toMatchObject({
+        device: onewireSensor,
         sensorVisual: null,
       });
     });

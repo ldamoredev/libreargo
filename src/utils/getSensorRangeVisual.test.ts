@@ -23,6 +23,24 @@ describe("getSensorRangeVisual", () => {
     });
   });
 
+  it("devuelve visual de humedad para un sensor bme280", () => {
+    const device: Device = {
+      id: "sensor-bme280-0",
+      type: "sensor",
+      name: "BME280",
+      subtype: "bme280",
+      zones: ["Zona A"],
+    };
+
+    expect(getSensorRangeVisual(device, mockConfig, mockActual)).toEqual({
+      label: "Humedad",
+      unit: "%",
+      min: 55,
+      max: 65,
+      current: 60,
+    });
+  });
+
   it("devuelve null para actuadores", () => {
     const device: Device = {
       id: "relay-1",
@@ -49,7 +67,7 @@ describe("getSensorRangeVisual", () => {
   });
 
   it("obtiene la medicion visual primaria desde el mismo catalogo del subtipo", () => {
-    expect(getPrimaryVisualMeasurement("capacitive")).toEqual({
+    expect(getPrimaryVisualMeasurement("bme280")).toEqual({
       key: "humidity",
       label: "Humedad",
       isPrimaryVisual: true,

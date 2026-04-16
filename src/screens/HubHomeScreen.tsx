@@ -20,6 +20,7 @@ import {
 import type { FilterType } from "../components";
 import type { Device } from "../types";
 import type { RootStackParamList } from "../navigation/types";
+import { getPrimaryVisualMeasurement } from "../features/sensors/sensorMeasurementCatalog";
 import { getSensorRangeVisual } from "../utils/getSensorRangeVisual";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HubHome">;
@@ -82,6 +83,48 @@ export function HubHomeScreen({ navigation, route }: Props) {
       device.zones.some((zone) => zoneSet.has(zone))
     );
   }, [devices, filter, selectedZones]);
+
+  const primaryVisualMetricCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    filteredDevices.forEach((device) => {
+      if (device.type !== "sensor") {
+        return;
+      }
+
+      const primaryMeasurement = getPrimaryVisualMeasurement(device.subtype);
+      if (!primaryMeasurement) {
+        return;
+      }
+
+      counts.set(
+        primaryMeasurement.key,
+        (counts.get(primaryMeasurement.key) ?? 0) + 1
+      );
+    });
+
+    return counts;
+  }, [filteredDevices]);
+
+  const getSensorVisualForDevice = useCallback(
+    (device: Device) => {
+      if (device.type !== "sensor") {
+        return null;
+      }
+
+      const primaryMeasurement = getPrimaryVisualMeasurement(device.subtype);
+      if (!primaryMeasurement) {
+        return null;
+      }
+
+      if (primaryVisualMetricCounts.get(primaryMeasurement.key) !== 1) {
+        return null;
+      }
+
+      return getSensorRangeVisual(device, config, actual);
+    },
+    [actual, config, primaryVisualMetricCounts]
+  );
 
   const handleDevicePress = useCallback(
     (device: Device) => {
@@ -147,7 +190,7 @@ export function HubHomeScreen({ navigation, route }: Props) {
         renderItem={({ item }) => (
           <DeviceListItem
             device={item}
-            sensorVisual={getSensorRangeVisual(item, config, actual)}
+            sensorVisual={getSensorVisualForDevice(item)}
             onPress={handleDevicePress}
           />
         )}

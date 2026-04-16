@@ -20,6 +20,7 @@ import {
 import type { FilterType } from "../components";
 import type { Device } from "../types";
 import type { RootStackParamList } from "../navigation/types";
+import { getSensorRangeVisual } from "../utils/getSensorRangeVisual";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HubHome">;
 
@@ -36,7 +37,7 @@ function resolveFilter(
 export function HubHomeScreen({ navigation, route }: Props) {
   const { hubHash, filter: initialFilter } = route.params;
   const hub = useHubStore((s) => s.hubs.find((h) => h.hash === hubHash));
-  const { alarms, devices, loading, error, loadHubData, clearData } =
+  const { alarms, devices, config, actual, loading, error, loadHubData, clearData } =
     useHubDataStore();
   const [filter, setFilter] = useState<FilterType>(() =>
     resolveFilter(initialFilter)
@@ -144,7 +145,11 @@ export function HubHomeScreen({ navigation, route }: Props) {
         data={filteredDevices}
         keyExtractor={(device) => device.id}
         renderItem={({ item }) => (
-          <DeviceListItem device={item} onPress={handleDevicePress} />
+          <DeviceListItem
+            device={item}
+            sensorVisual={getSensorRangeVisual(item, config, actual)}
+            onPress={handleDevicePress}
+          />
         )}
         ListHeaderComponent={
           <>

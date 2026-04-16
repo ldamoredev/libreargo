@@ -8,6 +8,7 @@ export { AlarmSummaryCard } from "./AlarmSummaryCard";
 export { AlarmCard } from "./AlarmCard";
 export { DeviceListItem } from "./DeviceListItem";
 export { DeviceFilter } from "./DeviceFilter";
+export { SensorRangeIndicator } from "./SensorRangeIndicator";
 export { CropForm } from "./CropForm";
 export { ZoneFilterSheet } from "./ZoneFilterSheet";
 export type { FilterType } from "./DeviceFilter";

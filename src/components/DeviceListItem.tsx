@@ -1,16 +1,22 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { COLORS } from "../constants";
-import type { Device } from "../types";
+import type { Device, SensorRangeVisual } from "../types";
+import { SensorRangeIndicator } from "./SensorRangeIndicator";
 
 interface DeviceListItemProps {
   readonly device: Device;
+  readonly sensorVisual?: SensorRangeVisual | null;
   readonly onPress: (device: Device) => void;
 }
 
 const SENSOR_ICON = "S";
 const ACTUATOR_ICON = "A";
 
-export function DeviceListItem({ device, onPress }: DeviceListItemProps) {
+export function DeviceListItem({
+  device,
+  sensorVisual,
+  onPress,
+}: DeviceListItemProps) {
   const isSensor = device.type === "sensor";
 
   return (
@@ -44,6 +50,9 @@ export function DeviceListItem({ device, onPress }: DeviceListItemProps) {
             {device.zones.join(", ")}
           </Text>
         )}
+        {isSensor && sensorVisual ? (
+          <SensorRangeIndicator visual={sensorVisual} />
+        ) : null}
       </View>
       <Text style={styles.chevron}>›</Text>
     </TouchableOpacity>

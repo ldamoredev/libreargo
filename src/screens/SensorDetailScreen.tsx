@@ -20,8 +20,22 @@ function formatTime(iso: string): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+function getSensorTypeFromId(sensorId: string): string {
+  if (!sensorId.startsWith("sensor-")) {
+    return sensorId;
+  }
+
+  const lastDash = sensorId.lastIndexOf("-");
+  if (lastDash <= "sensor-".length) {
+    return sensorId.slice("sensor-".length);
+  }
+
+  return sensorId.slice("sensor-".length, lastDash);
+}
+
 export function SensorDetailScreen({ route, navigation }: Props) {
-  const { sensorType } = route.params;
+  const { sensorId } = route.params;
+  const sensorType = getSensorTypeFromId(sensorId);
   const actual = useHubDataStore((s) => s.actual);
   const config = useHubDataStore((s) => s.config);
   const measurements = getSensorMeasurements(sensorType);

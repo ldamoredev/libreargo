@@ -1,61 +1,36 @@
-import type { Device, HubConfig, SensorData, SensorRangeVisual } from '../types';
+import type { Device, HubConfig, SensorData, SensorRangeVisual } from "../types";
 import {
-    ACTUAL_KEY_MAP,
-    UNIT_MAP,
-    getPrimaryVisualMeasurement,
-    type MeasurementKey,
-} from '../features/sensors/sensorMeasurementCatalog';
-
-function getRangeForMeasurement(
-    measurement: MeasurementKey,
-    config: HubConfig,
-): { min: number; max: number } | null {
-    switch (measurement) {
-        case 'temperature':
-            return { min: config.min_temperature, max: config.max_temperature };
-        case 'humidity':
-            return { min: config.min_hum, max: config.max_hum };
-        case 'co2':
-        case 'pressure':
-            return null;
-    }
-
-    const exhaustiveCheck: never = measurement;
-    return exhaustiveCheck;
-}
+  ACTUAL_KEY_MAP,
+  LABEL_MAP,
+  UNIT_MAP,
+  getPrimaryVisualMeasurement,
+} from "../features/sensors/sensorMeasurementCatalog";
+import { getMeasurementRange } from "../features/sensors/getMeasurementRange";
 
 export function getSensorRangeVisual(
-    device: Device,
-    config: HubConfig | null,
-    actual: SensorData | null,
+  device: Device,
+  config: HubConfig | null,
+  actual: SensorData | null,
 ): SensorRangeVisual | null {
-    if (device.type !== 'sensor' || !config || !actual) {
-        return null;
-    }
+  if (device.type !== "sensor" || !config || !actual) {
+    return null;
+  }
 
-    const measurementMeta = getPrimaryVisualMeasurement(device.subtype);
-    if (!measurementMeta) {
-        return null;
-    }
+  const measurementKey =
+    device.sensorType ?? getPrimaryVisualMeasurement(device.subtype)?.key ?? "temperature";
+  const range = getMeasurementRange(measurementKey, config);
+  const actualKey = ACTUAL_KEY_MAP[measurementKey];
+  const current = Number.parseFloat(actual[actualKey]);
 
-    const range = getRangeForMeasurement(measurementMeta.key, config);
-    const actualKey = ACTUAL_KEY_MAP[measurementMeta.key];
-    const current = Number.parseFloat(actual[actualKey]);
+  if (!range || !Number.isFinite(current) || range.min >= range.max) {
+    return null;
+  }
 
-    if (
-        !measurementMeta ||
-        !range ||
-        !Number.isFinite(current) ||
-        range.min >= range.max
-    ) {
-        return null;
-    }
-
-    return {
-        label: measurementMeta.label,
-        unit: UNIT_MAP[measurementMeta.key],
-        min: range.min,
-        max: range.max,
-        current,
-    };
+  return {
+    label: LABEL_MAP[measurementKey],
+    unit: UNIT_MAP[measurementKey],
+    min: range.min,
+    max: range.max,
+    current,
+  };
 }

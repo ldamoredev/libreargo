@@ -92,15 +92,10 @@ export function HubHomeScreen({ navigation, route }: Props) {
         return;
       }
 
-      const primaryMeasurement = getPrimaryVisualMeasurement(device.subtype);
-      if (!primaryMeasurement) {
-        return;
-      }
+      const measurementKey =
+        device.sensorType ?? getPrimaryVisualMeasurement(device.subtype)?.key ?? "temperature";
 
-      counts.set(
-        primaryMeasurement.key,
-        (counts.get(primaryMeasurement.key) ?? 0) + 1
-      );
+      counts.set(measurementKey, (counts.get(measurementKey) ?? 0) + 1);
     });
 
     return counts;
@@ -112,12 +107,10 @@ export function HubHomeScreen({ navigation, route }: Props) {
         return null;
       }
 
-      const primaryMeasurement = getPrimaryVisualMeasurement(device.subtype);
-      if (!primaryMeasurement) {
-        return null;
-      }
+      const measurementKey =
+        device.sensorType ?? getPrimaryVisualMeasurement(device.subtype)?.key ?? "temperature";
 
-      if (primaryVisualMetricCounts.get(primaryMeasurement.key) !== 1) {
+      if (primaryVisualMetricCounts.get(measurementKey) !== 1) {
         return null;
       }
 
@@ -131,7 +124,7 @@ export function HubHomeScreen({ navigation, route }: Props) {
       if (device.type === "sensor") {
         navigation.navigate("SensorDetail", {
           hubHash,
-          sensorType: device.subtype,
+          sensorId: device.id,
         });
       } else if (device.relayAddress != null) {
         navigation.navigate("ActuatorDetail", {

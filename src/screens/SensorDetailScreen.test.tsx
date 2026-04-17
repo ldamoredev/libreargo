@@ -8,13 +8,13 @@ import type { RootStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SensorDetail">;
 
-function makeProps(sensorType: string): Props {
+function makeProps(sensorId: string): Props {
   return {
     navigation: { goBack: jest.fn() } as unknown as Props["navigation"],
     route: {
       key: "SensorDetail",
       name: "SensorDetail",
-      params: { hubHash: "hub-1", sensorType },
+      params: { hubHash: "hub-1", sensorId },
     } as Props["route"],
   };
 }
@@ -61,7 +61,7 @@ describe("SensorDetailScreen", () => {
   });
 
   it("muestra un estado explicito cuando el subtipo no esta soportado", () => {
-    render(<SensorDetailScreen {...makeProps("mystery_sensor")} />);
+    render(<SensorDetailScreen {...makeProps("sensor-mystery_sensor-0")} />);
 
     expect(screen.getByText("MYSTERY_SENSOR")).toBeTruthy();
     expect(screen.getByText("Sensor no soportado")).toBeTruthy();

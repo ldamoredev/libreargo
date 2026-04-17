@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { HubConfig, SensorData, RelayState, Alarm, Device } from "../types";
 import { getConfig, getActual, getRelays, getAlarms } from "../services/hubDataService";
+import { buildHubSensorDevices } from "../features/sensors/buildHubSensorDevices";
 
 interface HubDataState {
   readonly config: HubConfig | null;
@@ -21,15 +22,7 @@ function buildDevices(
   config: HubConfig,
   relays: readonly RelayState[]
 ): readonly Device[] {
-  const sensorDevices: Device[] = config.sensors
-    .filter((s) => s.enabled)
-    .map((s, i) => ({
-      id: `sensor-${s.type}-${i}`,
-      type: "sensor" as const,
-      name: s.type.toUpperCase(),
-      subtype: s.type,
-      zones: s.zones ?? [],
-    }));
+  const sensorDevices = buildHubSensorDevices(config);
 
   const relayDevices: Device[] = relays.map((r) => ({
     id: `relay-${r.address}`,

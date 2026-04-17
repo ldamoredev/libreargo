@@ -126,5 +126,6 @@ export interface Device {
   readonly name: string;
   readonly subtype: string; // tipo de sensor o "relay_2ch"
   readonly zones: readonly string[];
+  readonly sensorType?: AlarmDataType;
   readonly relayAddress?: number; // solo para actuadores
 }

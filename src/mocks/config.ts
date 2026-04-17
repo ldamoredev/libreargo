@@ -8,9 +8,23 @@ export const mockConfig: HubConfig = {
   min_hum: 55,
   max_hum: 65,
   sensors: [
-    { type: "scd30", enabled: true, config: {}, zones: ["Zona A"] },
-    { type: "bme280", enabled: true, config: {}, zones: ["Zona A", "Zona B"] },
-    { type: "capacitive", enabled: false, config: {} },
+    {
+      type: "scd30",
+      enabled: true,
+      config: { measurementKey: "temperature" },
+      zones: ["Zona A"],
+    },
+    {
+      type: "bme280",
+      enabled: true,
+      config: { measurementKey: "humidity" },
+      zones: ["Zona A", "Zona B"],
+    },
+    {
+      type: "capacitive",
+      enabled: false,
+      config: { measurementKey: "humidity" },
+    },
   ],
   relays: [
     { type: "relay_2ch", enabled: true, config: { address: 1, alias: "Ventilador" } },

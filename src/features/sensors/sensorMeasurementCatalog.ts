@@ -53,6 +53,13 @@ const SENSOR_SUBTYPE_CATALOG: Record<
   },
 };
 
+export const LABEL_MAP: Record<MeasurementKey, string> = {
+  temperature: "Temperatura",
+  humidity: "Humedad",
+  co2: "CO2",
+  pressure: "Presión",
+};
+
 export const UNIT_MAP: Record<MeasurementKey, string> = {
   temperature: "°C",
   humidity: "%",

@@ -22,9 +22,7 @@ function formatDate(iso: string): string {
 }
 
 function isCurrentCrop(harvestDate: string, now: Date): boolean {
-  const endOfHarvestDay = new Date(harvestDate);
-  endOfHarvestDay.setHours(23, 59, 59, 999);
-  return endOfHarvestDay.getTime() >= now.getTime();
+  return harvestDate.slice(0, 10) >= now.toISOString().slice(0, 10);
 }
 
 function CropCard({

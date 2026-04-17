@@ -10,6 +10,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "Alarms">;
 
 export function AlarmsScreen(_props: Props) {
   const alarms = useHubDataStore((s) => s.alarms);
+  const config = useHubDataStore((s) => s.config);
 
   const sorted = [...alarms].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -29,7 +30,11 @@ export function AlarmsScreen(_props: Props) {
         data={sorted}
         keyExtractor={(alarm) => alarm.id}
         renderItem={({ item }) => (
-          <AlarmCard alarm={item} onAcknowledge={handleAcknowledge} />
+          <AlarmCard
+            alarm={item}
+            config={config}
+            onAcknowledge={handleAcknowledge}
+          />
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={

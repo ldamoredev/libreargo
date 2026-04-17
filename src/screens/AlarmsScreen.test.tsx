@@ -56,4 +56,45 @@ describe("AlarmsScreen", () => {
     expect(screen.getByText("Reconocida")).toBeTruthy();
     expect(screen.queryByText("Reconocer")).toBeNull();
   });
+
+  it("muestra rango mínimo y máximo para una alarma compatible", () => {
+    useHubDataStore.setState({
+      config: {
+        incubator_name: "Hub Demo",
+        hash: "AABBCCDDEEFF",
+        min_temperature: 37.3,
+        max_temperature: 37.7,
+        min_hum: 55,
+        max_hum: 65,
+        sensors: [],
+        relays: [],
+      },
+    } as Partial<ReturnType<typeof useHubDataStore.getState>>);
+
+    render(<AlarmsScreen {...makeProps()} />);
+
+    expect(screen.getByText("Mínimo")).toBeTruthy();
+    expect(screen.getByText("Máximo")).toBeTruthy();
+    expect(screen.getByText("37.3°C")).toBeTruthy();
+    expect(screen.getByText("37.7°C")).toBeTruthy();
+  });
+
+  it("muestra el valor actual en rojo si sigue fuera de rango", () => {
+    useHubDataStore.setState({
+      config: {
+        incubator_name: "Hub Demo",
+        hash: "AABBCCDDEEFF",
+        min_temperature: 37.3,
+        max_temperature: 37.7,
+        min_hum: 55,
+        max_hum: 65,
+        sensors: [],
+        relays: [],
+      },
+    } as Partial<ReturnType<typeof useHubDataStore.getState>>);
+
+    render(<AlarmsScreen {...makeProps()} />);
+
+    expect(screen.getByText("37.8°C")).toHaveStyle({ color: "#D32F2F" });
+  });
 });

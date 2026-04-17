@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { COLORS } from "../constants";
-import type { Alarm } from "../types";
+import type { Alarm, HubConfig } from "../types";
+import { getMeasurementRange } from "../features/sensors/getMeasurementRange";
 
 const UNIT_MAP: Record<string, string> = {
   temperature: "°C",
@@ -28,6 +29,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 interface AlarmCardProps {
   readonly alarm: Alarm;
+  readonly config: HubConfig | null;
   readonly onAcknowledge: (id: string) => void;
 }
 
@@ -37,11 +39,15 @@ function formatDate(iso: string): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function AlarmCard({ alarm, onAcknowledge }: AlarmCardProps) {
+export function AlarmCard({ alarm, config, onAcknowledge }: AlarmCardProps) {
   const unit = UNIT_MAP[alarm.dataType] ?? "";
   const label = LABEL_MAP[alarm.dataType] ?? alarm.dataType;
   const statusColor = STATUS_COLOR[alarm.status] ?? COLORS.textSecondary;
   const isActive = alarm.status === "active";
+  const range = getMeasurementRange(alarm.dataType, config);
+  const isCurrentOutOfRange =
+    range !== null &&
+    (alarm.currentValue < range.min || alarm.currentValue > range.max);
 
   return (
     <View style={[styles.container, !isActive && styles.containerInactive]}>
@@ -66,11 +72,26 @@ export function AlarmCard({ alarm, onAcknowledge }: AlarmCardProps) {
         </View>
         <View style={styles.valueBlock}>
           <Text style={styles.valueLabel}>Actual</Text>
-          <Text style={styles.value}>
+          <Text
+            style={[styles.value, isCurrentOutOfRange && styles.valueOutOfRange]}
+          >
             {alarm.currentValue}{unit}
           </Text>
         </View>
       </View>
+
+      {range && (
+        <View style={styles.rangeRow}>
+          <View style={styles.valueBlock}>
+            <Text style={styles.valueLabel}>Mínimo</Text>
+            <Text style={styles.rangeValue}>{range.min.toFixed(1)}{unit}</Text>
+          </View>
+          <View style={styles.valueBlock}>
+            <Text style={styles.valueLabel}>Máximo</Text>
+            <Text style={styles.rangeValue}>{range.max.toFixed(1)}{unit}</Text>
+          </View>
+        </View>
+      )}
 
       {alarm.zones.length > 0 && (
         <Text style={styles.zones}>{alarm.zones.join(", ")}</Text>
@@ -142,12 +163,25 @@ const styles = StyleSheet.create({
     gap: 24,
     marginBottom: 8,
   },
+  rangeRow: {
+    flexDirection: "row",
+    gap: 24,
+    marginBottom: 8,
+  },
   valueBlock: {},
   valueLabel: {
     fontSize: 12,
     color: COLORS.textSecondary,
   },
   value: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  valueOutOfRange: {
+    color: COLORS.error,
+  },
+  rangeValue: {
     fontSize: 18,
     fontWeight: "600",
     color: COLORS.text,

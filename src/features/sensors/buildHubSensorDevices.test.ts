@@ -44,4 +44,34 @@ describe("buildHubSensorDevices", () => {
       }),
     ]);
   });
+
+  it("omite sensores sin medicion visible resuelta en vez de convertirlos a temperatura", () => {
+    const unsupportedConfig: HubConfig = {
+      ...config,
+      sensors: [
+        {
+          type: "mystery",
+          enabled: true,
+          config: { measurementKey: "bogus" },
+          zones: ["Zona X"],
+        },
+        {
+          type: "bme280",
+          enabled: true,
+          config: {},
+          zones: ["Zona Y"],
+        },
+      ],
+    };
+
+    expect(buildHubSensorDevices(unsupportedConfig)).toEqual([
+      expect.objectContaining({
+        id: "sensor-bme280-1",
+        name: "Humedad",
+        subtype: "bme280",
+        sensorType: "humidity",
+        zones: ["Zona Y"],
+      }),
+    ]);
+  });
 });

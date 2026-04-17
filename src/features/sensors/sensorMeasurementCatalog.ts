@@ -1,4 +1,4 @@
-import type { SensorData, SensorReading } from "../../types";
+import type { AlarmDataType, SensorConfig, SensorData, SensorReading } from "../../types";
 
 export type MeasurementKey = "temperature" | "humidity" | "co2" | "pressure";
 export interface SensorMeasurementDefinition {
@@ -94,4 +94,23 @@ export function getPrimaryVisualMeasurement(
     getSensorMeasurements(subtype)?.find((measurement) => measurement.isPrimaryVisual) ??
     null
   );
+}
+
+function isMeasurementKey(value: unknown): value is MeasurementKey {
+  return (
+    value === "temperature" ||
+    value === "humidity" ||
+    value === "co2" ||
+    value === "pressure"
+  );
+}
+
+export function resolveVisibleSensorMeasurement(
+  sensor: SensorConfig
+): AlarmDataType | null {
+  if (isMeasurementKey(sensor.config.measurementKey)) {
+    return sensor.config.measurementKey;
+  }
+
+  return getPrimaryVisualMeasurement(sensor.type)?.key ?? null;
 }

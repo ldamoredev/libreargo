@@ -20,7 +20,6 @@ import {
 import type { FilterType } from "../components";
 import type { Device } from "../types";
 import type { RootStackParamList } from "../navigation/types";
-import { getPrimaryVisualMeasurement } from "../features/sensors/sensorMeasurementCatalog";
 import { getSensorRangeVisual } from "../utils/getSensorRangeVisual";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HubHome">;
@@ -92,9 +91,8 @@ export function HubHomeScreen({ navigation, route }: Props) {
         return;
       }
 
-      const measurementKey =
-        device.sensorType ?? getPrimaryVisualMeasurement(device.subtype)?.key ?? "temperature";
-
+      const measurementKey = device.sensorType;
+      if (!measurementKey) return;
       counts.set(measurementKey, (counts.get(measurementKey) ?? 0) + 1);
     });
 
@@ -107,8 +105,8 @@ export function HubHomeScreen({ navigation, route }: Props) {
         return null;
       }
 
-      const measurementKey =
-        device.sensorType ?? getPrimaryVisualMeasurement(device.subtype)?.key ?? "temperature";
+      const measurementKey = device.sensorType;
+      if (!measurementKey) return null;
 
       if (primaryVisualMetricCounts.get(measurementKey) !== 1) {
         return null;

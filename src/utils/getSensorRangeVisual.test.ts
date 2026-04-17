@@ -11,6 +11,7 @@ describe("getSensorRangeVisual", () => {
       type: "sensor",
       name: "SCD30",
       subtype: "scd30",
+      sensorType: "temperature",
       zones: ["Zona A"],
     };
 
@@ -29,6 +30,7 @@ describe("getSensorRangeVisual", () => {
       type: "sensor",
       name: "BME280",
       subtype: "bme280",
+      sensorType: "humidity",
       zones: ["Zona A"],
     };
 
@@ -60,6 +62,7 @@ describe("getSensorRangeVisual", () => {
       type: "sensor",
       name: "HD38",
       subtype: "hd38",
+      sensorType: "co2",
       zones: [],
     };
 

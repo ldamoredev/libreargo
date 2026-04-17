@@ -7,7 +7,6 @@ import {
   LABEL_MAP,
   READING_KEY_MAP,
   UNIT_MAP,
-  getPrimaryVisualMeasurement,
 } from "../features/sensors/sensorMeasurementCatalog";
 import { useHubDataStore } from "../stores/hubDataStore";
 import { mockReadings } from "../mocks";
@@ -41,10 +40,10 @@ export function SensorDetailScreen({ route, navigation }: Props) {
     (s) => s.devices.find((device) => device.id === sensorId && device.type === "sensor")
   );
 
-  const sensorSubtype = sensorDevice?.subtype ?? getSensorLabelFromId(sensorId);
-  const measurementKey =
-    sensorDevice?.sensorType ?? getPrimaryVisualMeasurement(sensorSubtype)?.key ?? null;
-  const measurement = measurementKey ? { key: measurementKey, label: LABEL_MAP[measurementKey] } : null;
+  const measurementKey = sensorDevice?.sensorType ?? null;
+  const measurement = measurementKey
+    ? { key: measurementKey, label: LABEL_MAP[measurementKey] }
+    : null;
   const zones = sensorDevice?.zones ?? [];
 
   const errors = useMemo(() => {

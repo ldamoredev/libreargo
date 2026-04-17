@@ -43,6 +43,7 @@ describe("HubHomeScreen", () => {
     type: "sensor",
     name: "SCD30",
     subtype: "scd30",
+    sensorType: "temperature",
     zones: ["Zona A"],
   };
 
@@ -51,6 +52,7 @@ describe("HubHomeScreen", () => {
     type: "sensor",
     name: "1-Wire",
     subtype: "onewire",
+    sensorType: "temperature",
     zones: ["Zona A"],
   };
 

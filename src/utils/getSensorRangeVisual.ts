@@ -3,7 +3,6 @@ import {
   ACTUAL_KEY_MAP,
   LABEL_MAP,
   UNIT_MAP,
-  getPrimaryVisualMeasurement,
 } from "../features/sensors/sensorMeasurementCatalog";
 import { getMeasurementRange } from "../features/sensors/getMeasurementRange";
 
@@ -16,8 +15,10 @@ export function getSensorRangeVisual(
     return null;
   }
 
-  const measurementKey =
-    device.sensorType ?? getPrimaryVisualMeasurement(device.subtype)?.key ?? "temperature";
+  const measurementKey = device.sensorType;
+  if (!measurementKey) {
+    return null;
+  }
   const range = getMeasurementRange(measurementKey, config);
   const actualKey = ACTUAL_KEY_MAP[measurementKey];
   const current = Number.parseFloat(actual[actualKey]);

@@ -7,6 +7,39 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Alarms">;
 
+const hubConfig = {
+  incubator_name: "Hub Demo",
+  hash: "AABBCCDDEEFF",
+  min_temperature: 37.3,
+  max_temperature: 37.7,
+  min_hum: 55,
+  max_hum: 65,
+  sensors: [],
+  relays: [],
+} as const;
+
+function seedState(currentValue = 37.8) {
+  useHubDataStore.setState({
+    config: null,
+    actual: null,
+    relays: [],
+    devices: [],
+    loading: false,
+    error: null,
+    alarms: [
+      {
+        id: "alarm-001",
+        timestamp: "2026-03-30T10:15:00Z",
+        dataType: "temperature",
+        alertValue: 38.5,
+        currentValue,
+        zones: ["Zona A"],
+        status: "active",
+      },
+    ],
+  });
+}
+
 function makeProps(): Props {
   return {
     navigation: { navigate: jest.fn(), goBack: jest.fn() } as unknown as Props["navigation"],
@@ -20,25 +53,7 @@ function makeProps(): Props {
 
 describe("AlarmsScreen", () => {
   beforeEach(() => {
-    useHubDataStore.setState({
-      config: null,
-      actual: null,
-      relays: [],
-      devices: [],
-      loading: false,
-      error: null,
-      alarms: [
-        {
-          id: "alarm-001",
-          timestamp: "2026-03-30T10:15:00Z",
-          dataType: "temperature",
-          alertValue: 38.5,
-          currentValue: 37.8,
-          zones: ["Zona A"],
-          status: "active",
-        },
-      ],
-    });
+    seedState();
   });
 
   it("muestra sólo Reconocer para alarmas activas", () => {
@@ -59,16 +74,7 @@ describe("AlarmsScreen", () => {
 
   it("muestra rango mínimo y máximo para una alarma compatible", () => {
     useHubDataStore.setState({
-      config: {
-        incubator_name: "Hub Demo",
-        hash: "AABBCCDDEEFF",
-        min_temperature: 37.3,
-        max_temperature: 37.7,
-        min_hum: 55,
-        max_hum: 65,
-        sensors: [],
-        relays: [],
-      },
+      config: hubConfig,
     } as Partial<ReturnType<typeof useHubDataStore.getState>>);
 
     render(<AlarmsScreen {...makeProps()} />);
@@ -81,20 +87,22 @@ describe("AlarmsScreen", () => {
 
   it("muestra el valor actual en rojo si sigue fuera de rango", () => {
     useHubDataStore.setState({
-      config: {
-        incubator_name: "Hub Demo",
-        hash: "AABBCCDDEEFF",
-        min_temperature: 37.3,
-        max_temperature: 37.7,
-        min_hum: 55,
-        max_hum: 65,
-        sensors: [],
-        relays: [],
-      },
+      config: hubConfig,
     } as Partial<ReturnType<typeof useHubDataStore.getState>>);
 
     render(<AlarmsScreen {...makeProps()} />);
 
     expect(screen.getByText("37.8°C")).toHaveStyle({ color: "#D32F2F" });
+  });
+
+  it("vuelve al color normal cuando el valor actual regresa al rango", () => {
+    seedState(37.5);
+    useHubDataStore.setState({
+      config: hubConfig,
+    } as Partial<ReturnType<typeof useHubDataStore.getState>>);
+
+    render(<AlarmsScreen {...makeProps()} />);
+
+    expect(screen.getByText("37.5°C")).toHaveStyle({ color: "#212121" });
   });
 });

@@ -93,7 +93,7 @@ export function MainStack() {
         <Stack.Screen
           name="HubList"
           component={HubListScreen}
-          options={{ title: "LibreAgro" }}
+          options={{ title: "LibreAgro", headerLeft: undefined }}
         />
         <Stack.Screen
           name="HubHome"

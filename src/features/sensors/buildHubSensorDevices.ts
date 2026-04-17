@@ -2,24 +2,26 @@ import type { Device, HubConfig } from "../../types";
 import { LABEL_MAP, resolveVisibleSensorMeasurement } from "./sensorMeasurementCatalog";
 
 export function buildHubSensorDevices(config: HubConfig): readonly Device[] {
-  return config.sensors
-    .filter((sensor) => sensor.enabled)
-    .flatMap((sensor, index) => {
-      const sensorType = resolveVisibleSensorMeasurement(sensor);
+  return config.sensors.flatMap((sensor, index) => {
+    if (!sensor.enabled) {
+      return [];
+    }
 
-      if (!sensorType) {
-        return [];
-      }
+    const sensorType = resolveVisibleSensorMeasurement(sensor);
 
-      return [
-        {
-          id: `sensor-${sensor.type}-${index}`,
-          type: "sensor" as const,
-          name: LABEL_MAP[sensorType],
-          subtype: sensor.type,
-          sensorType,
-          zones: sensor.zones ?? [],
-        },
-      ];
-    });
+    if (!sensorType) {
+      return [];
+    }
+
+    return [
+      {
+        id: `sensor-${sensor.type}-${index}`,
+        type: "sensor" as const,
+        name: LABEL_MAP[sensorType],
+        subtype: sensor.type,
+        sensorType,
+        zones: sensor.zones ?? [],
+      },
+    ];
+  });
 }

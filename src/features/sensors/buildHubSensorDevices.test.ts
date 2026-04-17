@@ -74,4 +74,34 @@ describe("buildHubSensorDevices", () => {
       }),
     ]);
   });
+
+  it("mantiene estable el id visible cuando un sensor anterior queda deshabilitado", () => {
+    const disabledEarlierSensorConfig: HubConfig = {
+      ...config,
+      sensors: [
+        {
+          type: "mystery",
+          enabled: false,
+          config: {},
+          zones: ["Zona X"],
+        },
+        {
+          type: "bme280",
+          enabled: true,
+          config: {},
+          zones: ["Zona Y"],
+        },
+      ],
+    };
+
+    expect(buildHubSensorDevices(disabledEarlierSensorConfig)).toEqual([
+      expect.objectContaining({
+        id: "sensor-bme280-1",
+        name: "Humedad",
+        subtype: "bme280",
+        sensorType: "humidity",
+        zones: ["Zona Y"],
+      }),
+    ]);
+  });
 });

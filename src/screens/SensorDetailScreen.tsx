@@ -4,9 +4,10 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { COLORS } from "../constants";
 import {
   ACTUAL_KEY_MAP,
+  LABEL_MAP,
   READING_KEY_MAP,
   UNIT_MAP,
-  getSensorMeasurements,
+  getPrimaryVisualMeasurement,
 } from "../features/sensors/sensorMeasurementCatalog";
 import { useHubDataStore } from "../stores/hubDataStore";
 import { mockReadings } from "../mocks";
@@ -20,31 +21,31 @@ function formatTime(iso: string): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-function getSensorTypeFromId(sensorId: string): string {
+function getSensorLabelFromId(sensorId: string): string {
   if (!sensorId.startsWith("sensor-")) {
-    return sensorId;
+    return sensorId.toUpperCase();
   }
 
   const lastDash = sensorId.lastIndexOf("-");
   if (lastDash <= "sensor-".length) {
-    return sensorId.slice("sensor-".length);
+    return sensorId.slice("sensor-".length).toUpperCase();
   }
 
-  return sensorId.slice("sensor-".length, lastDash);
+  return sensorId.slice("sensor-".length, lastDash).toUpperCase();
 }
 
 export function SensorDetailScreen({ route, navigation }: Props) {
   const { sensorId } = route.params;
-  const sensorType = getSensorTypeFromId(sensorId);
   const actual = useHubDataStore((s) => s.actual);
-  const config = useHubDataStore((s) => s.config);
-  const measurements = getSensorMeasurements(sensorType);
-
-  const sensorConfig = config?.sensors.find(
-    (s) => s.type === sensorType && s.enabled
+  const sensorDevice = useHubDataStore(
+    (s) => s.devices.find((device) => device.id === sensorId && device.type === "sensor")
   );
 
-  const zones = sensorConfig?.zones ?? [];
+  const sensorSubtype = sensorDevice?.subtype ?? getSensorLabelFromId(sensorId);
+  const measurementKey =
+    sensorDevice?.sensorType ?? getPrimaryVisualMeasurement(sensorSubtype)?.key ?? null;
+  const measurement = measurementKey ? { key: measurementKey, label: LABEL_MAP[measurementKey] } : null;
+  const zones = sensorDevice?.zones ?? [];
 
   const errors = useMemo(() => {
     if (!actual) return [];
@@ -69,26 +70,17 @@ export function SensorDetailScreen({ route, navigation }: Props) {
     );
   }
 
-  if (!measurements) {
+  if (!sensorDevice || !measurement) {
     return (
       <View style={styles.container}>
         <View style={styles.infoCard}>
-          <Text style={styles.sensorType}>{sensorType.toUpperCase()}</Text>
+          <Text style={styles.sensorType}>{getSensorLabelFromId(sensorId)}</Text>
           <Text style={styles.sensorSubtype}>Sensor</Text>
-          {zones.length > 0 && (
-            <View style={styles.zonesRow}>
-              {zones.map((z) => (
-                <View key={z} style={styles.zoneChip}>
-                  <Text style={styles.zoneChipText}>{z}</Text>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
         <View style={styles.unsupportedCard}>
           <Text style={styles.unsupportedTitle}>Sensor no soportado</Text>
           <Text style={styles.unsupportedBody}>
-            Este subtipo todavía no tiene una vista de detalle disponible.
+            Este dispositivo todavía no tiene una vista de detalle disponible.
           </Text>
           <Text style={styles.link} onPress={() => navigation.goBack()}>
             Volver
@@ -100,9 +92,8 @@ export function SensorDetailScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* Header info */}
       <View style={styles.infoCard}>
-        <Text style={styles.sensorType}>{sensorType.toUpperCase()}</Text>
+        <Text style={styles.sensorType}>{sensorDevice.name}</Text>
         <Text style={styles.sensorSubtype}>Sensor</Text>
         {zones.length > 0 && (
           <View style={styles.zonesRow}>
@@ -115,7 +106,6 @@ export function SensorDetailScreen({ route, navigation }: Props) {
         )}
       </View>
 
-      {/* Errores */}
       {errors.length > 0 && (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerTitle}>Errores activos</Text>
@@ -127,53 +117,41 @@ export function SensorDetailScreen({ route, navigation }: Props) {
         </View>
       )}
 
-      {/* Mediciones actuales */}
       <View style={styles.measurementsRow}>
-        {measurements.map(({ key, label }) => {
-          const actualKey = ACTUAL_KEY_MAP[key];
-          const parsedValue = Number.parseFloat(actual[actualKey]);
-          const value = Number.isFinite(parsedValue) ? parsedValue : null;
-          return (
-            <View key={key} style={styles.measurementCard}>
-              <Text style={styles.measurementLabel}>{label}</Text>
-              <Text style={styles.measurementValue}>
-                {value != null ? value.toFixed(1) : "—"}
-              </Text>
-              <Text style={styles.measurementUnit}>{UNIT_MAP[key] ?? ""}</Text>
-            </View>
-          );
-        })}
+        <View style={styles.measurementCard}>
+          <Text style={styles.measurementLabel}>{measurement.label}</Text>
+          <Text style={styles.measurementValue}>
+            {Number.isFinite(Number.parseFloat(actual[ACTUAL_KEY_MAP[measurement.key]]))
+              ? Number.parseFloat(actual[ACTUAL_KEY_MAP[measurement.key]]).toFixed(1)
+              : "—"}
+          </Text>
+          <Text style={styles.measurementUnit}>{UNIT_MAP[measurement.key] ?? ""}</Text>
+        </View>
       </View>
 
-      {/* Histórico corto */}
       <Text style={styles.sectionTitle}>Histórico reciente</Text>
       <View style={styles.tableHeader}>
         <Text style={[styles.tableCell, styles.tableCellTime]}>Hora</Text>
-        {measurements.map(({ key, label }) => (
-          <Text key={key} style={styles.tableCell}>
-            {label}
-          </Text>
-        ))}
+        <Text style={styles.tableCell}>{measurement.label}</Text>
       </View>
       <FlatList
         data={mockReadings.slice(0, 15)}
         keyExtractor={(_, i) => String(i)}
-        renderItem={({ item }) => (
-          <View style={styles.tableRow}>
-            <Text style={[styles.tableCell, styles.tableCellTime]}>
-              {formatTime(item.timestamp)}
-            </Text>
-            {measurements.map(({ key }) => {
-              const readingKey = READING_KEY_MAP[key];
-              const val = readingKey ? item[readingKey] : null;
-              return (
-                <Text key={key} style={styles.tableCell}>
-                  {typeof val === "number" ? val.toFixed(1) : "—"}
-                </Text>
-              );
-            })}
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const readingKey = READING_KEY_MAP[measurement.key];
+          const val = item[readingKey];
+
+          return (
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCell, styles.tableCellTime]}>
+                {formatTime(item.timestamp)}
+              </Text>
+              <Text style={styles.tableCell}>
+                {typeof val === "number" ? val.toFixed(1) : "—"}
+              </Text>
+            </View>
+          );
+        }}
         contentContainerStyle={styles.tableContent}
       />
     </View>

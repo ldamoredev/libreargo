@@ -60,6 +60,43 @@ describe("SensorDetailScreen", () => {
     });
   });
 
+  it("resuelve el dispositivo exacto por sensorId y usa sus zonas y metrica", () => {
+    useHubDataStore.setState({
+      config,
+      actual,
+      relays: [],
+      alarms: [],
+      devices: [
+        {
+          id: "sensor-bme280-0",
+          type: "sensor",
+          name: "Humedad",
+          subtype: "bme280",
+          sensorType: "humidity",
+          zones: ["Zona A"],
+        },
+        {
+          id: "sensor-bme280-1",
+          type: "sensor",
+          name: "Temperatura",
+          subtype: "bme280",
+          sensorType: "temperature",
+          zones: ["Zona B"],
+        },
+      ],
+      loading: false,
+      error: null,
+      loadHubData: jest.fn(),
+      clearData: jest.fn(),
+    });
+
+    render(<SensorDetailScreen {...makeProps("sensor-bme280-1")} />);
+
+    expect(screen.getByText("Zona B")).toBeTruthy();
+    expect(screen.getByText("25.5")).toBeTruthy();
+    expect(screen.queryByText("Zona A")).toBeNull();
+  });
+
   it("muestra un estado explicito cuando el subtipo no esta soportado", () => {
     render(<SensorDetailScreen {...makeProps("sensor-mystery_sensor-0")} />);
 

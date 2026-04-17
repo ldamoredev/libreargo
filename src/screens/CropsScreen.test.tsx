@@ -34,7 +34,7 @@ describe("CropsScreen", () => {
       ],
     });
 
-    jest.useFakeTimers().setSystemTime(new Date("2026-04-17T00:30:00-03:00"));
+    jest.useFakeTimers().setSystemTime(new Date("2026-04-17T23:30:00-03:00"));
   });
 
   afterEach(() => {
@@ -59,5 +59,30 @@ describe("CropsScreen", () => {
     expect(screen.getByText("Tomate actual")).toBeTruthy();
     expect(screen.getByText("Tomate de hoy")).toBeTruthy();
     expect(screen.queryByText("Lechuga cosechada")).toBeNull();
+  });
+
+  it("muestra el estado vacío de Actuales cuando no quedan cultivos vigentes", () => {
+    useCropStore.setState({
+      crops: [
+        {
+          id: "crop-expired",
+          name: "Lechuga vieja",
+          startDate: "2026-03-01T00:00:00.000Z",
+          period: 15,
+          harvestDate: "2026-03-16T00:00:00.000Z",
+          zones: ["Zona B"],
+        },
+      ],
+    });
+
+    render(<CropsScreen />);
+
+    fireEvent.press(screen.getByText("Actuales"));
+
+    expect(screen.getByText("No hay cultivos en el período actual")).toBeTruthy();
+    expect(
+      screen.getByText("Cambiar a Todos para ver cultivos cosechados.")
+    ).toBeTruthy();
+    expect(screen.queryByText("Lechuga vieja")).toBeNull();
   });
 });

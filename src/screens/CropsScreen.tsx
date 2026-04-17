@@ -21,8 +21,15 @@ function formatDate(iso: string): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
+function formatLocalDate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate()
+  )}`;
+}
+
 function isCurrentCrop(harvestDate: string, now: Date): boolean {
-  return harvestDate.slice(0, 10) >= now.toISOString().slice(0, 10);
+  return harvestDate.slice(0, 10) >= formatLocalDate(now);
 }
 
 function CropCard({

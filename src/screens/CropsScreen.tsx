@@ -13,23 +13,36 @@ import { CropForm } from "../components/CropForm";
 import { FAB } from "../components/FAB";
 import type { Crop } from "../types";
 
+type CropFilter = "todos" | "actuales";
+
 function formatDate(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
+function isCurrentCrop(harvestDate: string, now: Date): boolean {
+  const endOfHarvestDay = new Date(harvestDate);
+  endOfHarvestDay.setHours(23, 59, 59, 999);
+  return endOfHarvestDay.getTime() >= now.getTime();
+}
+
 function CropCard({
   crop,
+  isExpired,
   onEdit,
   onDelete,
 }: {
   crop: Crop;
+  isExpired: boolean;
   onEdit: (crop: Crop) => void;
   onDelete: (id: string) => void;
 }) {
   return (
-    <View style={styles.cropCard}>
+    <View
+      testID={`crop-card-${crop.id}`}
+      style={[styles.cropCard, isExpired && styles.cropCardExpired]}
+    >
       <View style={styles.cropHeader}>
         <Text style={styles.cropName}>{crop.name}</Text>
         <View style={styles.cropActions}>
@@ -72,6 +85,7 @@ export function CropsScreen() {
   const { crops, addCrop, updateCrop, deleteCrop } = useCropStore();
   const [formVisible, setFormVisible] = useState(false);
   const [editingCrop, setEditingCrop] = useState<Crop | undefined>();
+  const [filter, setFilter] = useState<CropFilter>("todos");
 
   const handleAdd = useCallback(() => {
     setEditingCrop(undefined);
@@ -105,20 +119,68 @@ export function CropsScreen() {
     [editingCrop, addCrop, updateCrop]
   );
 
+  const now = new Date();
+  const visibleCrops =
+    filter === "todos"
+      ? crops
+      : crops.filter((crop) => isCurrentCrop(crop.harvestDate, now));
+
   return (
     <View style={styles.container}>
+      <View style={styles.filterRow}>
+        <TouchableOpacity
+          style={[styles.filterTab, filter === "todos" && styles.filterTabActive]}
+          onPress={() => setFilter("todos")}
+        >
+          <Text
+            style={[
+              styles.filterTabText,
+              filter === "todos" && styles.filterTabTextActive,
+            ]}
+          >
+            Todos
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.filterTab,
+            filter === "actuales" && styles.filterTabActive,
+          ]}
+          onPress={() => setFilter("actuales")}
+        >
+          <Text
+            style={[
+              styles.filterTabText,
+              filter === "actuales" && styles.filterTabTextActive,
+            ]}
+          >
+            Actuales
+          </Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
-        data={crops}
+        data={visibleCrops}
         keyExtractor={(c) => c.id}
         renderItem={({ item }) => (
-          <CropCard crop={item} onEdit={handleEdit} onDelete={handleDelete} />
+          <CropCard
+            crop={item}
+            isExpired={!isCurrentCrop(item.harvestDate, now)}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Sin cultivos</Text>
+            <Text style={styles.emptyTitle}>
+              {filter === "actuales"
+                ? "No hay cultivos en el período actual"
+                : "Sin cultivos"}
+            </Text>
             <Text style={styles.emptyBody}>
-              Presioná "+" para agregar tu primer cultivo.
+              {filter === "actuales"
+                ? "Cambiar a Todos para ver cultivos cosechados."
+                : 'Presioná "+" para agregar tu primer cultivo.'}
             </Text>
           </View>
         }
@@ -139,6 +201,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  filterRow: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginTop: 12,
+    gap: 8,
+  },
+  filterTab: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#E0E0E0",
+  },
+  filterTabActive: {
+    backgroundColor: COLORS.primary,
+  },
+  filterTabText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: COLORS.textSecondary,
+  },
+  filterTabTextActive: {
+    color: COLORS.surface,
+  },
   list: {
     padding: 8,
     paddingBottom: 100,
@@ -154,6 +239,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
+  },
+  cropCardExpired: {
+    opacity: 0.55,
   },
   cropHeader: {
     flexDirection: "row",

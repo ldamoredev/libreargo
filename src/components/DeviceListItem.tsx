@@ -27,6 +27,11 @@ export function DeviceListItem({
   return (
     <TouchableOpacity
       accessibilityRole="button"
+      accessibilityLabel={
+        isSensorOutOfRange
+          ? `${device.name}, alerta fuera de rango`
+          : device.name
+      }
       style={[styles.container, isSensorOutOfRange && styles.containerAlert]}
       onPress={() => onPress(device)}
       activeOpacity={0.7}

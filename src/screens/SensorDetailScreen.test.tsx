@@ -6,6 +6,25 @@ import { useHubDataStore } from "../stores/hubDataStore";
 import type { HubConfig, SensorData } from "../types";
 import type { RootStackParamList } from "../navigation/types";
 
+jest.mock("../mocks", () => ({
+  mockReadings: [
+    {
+      timestamp: "2026-04-17T13:00:00.000Z",
+      temperature: 25.2,
+      humidity: 70,
+      co2: 500,
+      pressure: 1013,
+    },
+    {
+      timestamp: "2026-04-17T12:59:30.000Z",
+      temperature: 25.1,
+      humidity: 62,
+      co2: 495,
+      pressure: 1012,
+    },
+  ],
+}));
+
 type Props = NativeStackScreenProps<RootStackParamList, "SensorDetail">;
 
 function makeProps(sensorId: string): Props {

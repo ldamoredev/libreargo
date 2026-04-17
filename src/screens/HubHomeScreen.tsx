@@ -83,22 +83,6 @@ export function HubHomeScreen({ navigation, route }: Props) {
     );
   }, [devices, filter, selectedZones]);
 
-  const primaryVisualMetricCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-
-    filteredDevices.forEach((device) => {
-      if (device.type !== "sensor") {
-        return;
-      }
-
-      const measurementKey = device.sensorType;
-      if (!measurementKey) return;
-      counts.set(measurementKey, (counts.get(measurementKey) ?? 0) + 1);
-    });
-
-    return counts;
-  }, [filteredDevices]);
-
   const getSensorVisualForDevice = useCallback(
     (device: Device) => {
       if (device.type !== "sensor") {
@@ -108,13 +92,9 @@ export function HubHomeScreen({ navigation, route }: Props) {
       const measurementKey = device.sensorType;
       if (!measurementKey) return null;
 
-      if (primaryVisualMetricCounts.get(measurementKey) !== 1) {
-        return null;
-      }
-
       return getSensorRangeVisual(device, config, actual);
     },
-    [actual, config, primaryVisualMetricCounts]
+    [actual, config]
   );
 
   const handleDevicePress = useCallback(

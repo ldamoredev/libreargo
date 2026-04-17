@@ -161,7 +161,7 @@ describe("HubHomeScreen", () => {
     });
   });
 
-  it("omite el visual cuando varios sensores renderizados comparten la misma metrica primaria", async () => {
+  it("pasa el visual a cada sensor visible aunque compartan metrica", async () => {
     useHubDataStore.setState({
       config,
       actual,
@@ -195,14 +195,26 @@ describe("HubHomeScreen", () => {
         renderedItems.find(({ device }) => device.id === scd30Sensor.id)
       ).toMatchObject({
         device: scd30Sensor,
-        sensorVisual: null,
+        sensorVisual: {
+          label: "Temperatura",
+          unit: "°C",
+          min: 37.3,
+          max: 37.7,
+          current: 25.5,
+        },
       });
 
       expect(
         renderedItems.find(({ device }) => device.id === onewireSensor.id)
       ).toMatchObject({
         device: onewireSensor,
-        sensorVisual: null,
+        sensorVisual: {
+          label: "Temperatura",
+          unit: "°C",
+          min: 37.3,
+          max: 37.7,
+          current: 25.5,
+        },
       });
     });
   });

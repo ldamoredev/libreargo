@@ -18,10 +18,16 @@ export function DeviceListItem({
   onPress,
 }: DeviceListItemProps) {
   const isSensor = device.type === "sensor";
+  const isSensorOutOfRange =
+    isSensor &&
+    sensorVisual != null &&
+    (sensorVisual.current < sensorVisual.min ||
+      sensorVisual.current > sensorVisual.max);
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      accessibilityRole="button"
+      style={[styles.container, isSensorOutOfRange && styles.containerAlert]}
       onPress={() => onPress(device)}
       activeOpacity={0.7}
     >
@@ -73,6 +79,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  containerAlert: {
+    backgroundColor: "#FDECEC",
   },
   icon: {
     width: 40,

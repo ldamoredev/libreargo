@@ -78,4 +78,29 @@ describe("DeviceListItem", () => {
       transform: [{ translateX: -6 }],
     });
   });
+
+  it("resalta sensores fuera de rango con fondo rojo suave", () => {
+    const { getByRole } = render(
+      <DeviceListItem
+        device={{
+          id: "sensor-bme280-0",
+          type: "sensor",
+          name: "Humedad",
+          subtype: "bme280",
+          sensorType: "humidity",
+          zones: ["Zona A"],
+        }}
+        sensorVisual={{
+          label: "Humedad",
+          unit: "%",
+          min: 55,
+          max: 65,
+          current: 40,
+        }}
+        onPress={jest.fn()}
+      />
+    );
+
+    expect(getByRole("button")).toHaveStyle({ backgroundColor: "#FDECEC" });
+  });
 });

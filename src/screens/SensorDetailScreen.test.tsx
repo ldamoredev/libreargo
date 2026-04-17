@@ -105,4 +105,64 @@ describe("SensorDetailScreen", () => {
     expect(screen.queryByText("Temperatura")).toBeNull();
     expect(screen.queryByText("Histórico reciente")).toBeNull();
   });
+
+  it("muestra una sola medición con su rango visible", () => {
+    useHubDataStore.setState({
+      config,
+      actual,
+      relays: [],
+      alarms: [],
+      devices: [
+        {
+          id: "sensor-bme280-0",
+          type: "sensor",
+          name: "Sensor BME280",
+          subtype: "bme280",
+          sensorType: "humidity",
+          zones: ["Zona A"],
+        },
+      ],
+      loading: false,
+      error: null,
+      loadHubData: jest.fn(),
+      clearData: jest.fn(),
+    });
+
+    render(<SensorDetailScreen {...makeProps("sensor-bme280-0")} />);
+
+    expect(screen.getByText("Humedad")).toBeTruthy();
+    expect(screen.getByText("Mínimo")).toBeTruthy();
+    expect(screen.getByText("Máximo")).toBeTruthy();
+    expect(screen.queryByText("Temperatura")).toBeNull();
+    expect(screen.queryByText("Presión")).toBeNull();
+  });
+
+  it("resalta filas del histórico cuando caen fuera de rango", () => {
+    useHubDataStore.setState({
+      config,
+      actual,
+      relays: [],
+      alarms: [],
+      devices: [
+        {
+          id: "sensor-bme280-0",
+          type: "sensor",
+          name: "Sensor BME280",
+          subtype: "bme280",
+          sensorType: "humidity",
+          zones: ["Zona A"],
+        },
+      ],
+      loading: false,
+      error: null,
+      loadHubData: jest.fn(),
+      clearData: jest.fn(),
+    });
+
+    render(<SensorDetailScreen {...makeProps("sensor-bme280-0")} />);
+
+    expect(screen.getByTestId("history-row-out-of-range-0")).toHaveStyle({
+      backgroundColor: "#FDECEC",
+    });
+  });
 });

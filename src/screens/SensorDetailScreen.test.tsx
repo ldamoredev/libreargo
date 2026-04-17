@@ -165,4 +165,36 @@ describe("SensorDetailScreen", () => {
       backgroundColor: "#FDECEC",
     });
   });
+
+  it("muestra el detalle cuando el sensor es soportado pero no tiene rango configurado", () => {
+    useHubDataStore.setState({
+      config,
+      actual,
+      relays: [],
+      alarms: [],
+      devices: [
+        {
+          id: "sensor-hd38-0",
+          type: "sensor",
+          name: "Sensor HD38",
+          subtype: "hd38",
+          sensorType: "co2",
+          zones: ["Zona A"],
+        },
+      ],
+      loading: false,
+      error: null,
+      loadHubData: jest.fn(),
+      clearData: jest.fn(),
+    });
+
+    render(<SensorDetailScreen {...makeProps("sensor-hd38-0")} />);
+
+    expect(screen.getByText("CO2")).toBeTruthy();
+    expect(screen.getByText("Mínimo")).toBeTruthy();
+    expect(screen.getByText("Máximo")).toBeTruthy();
+    expect(screen.getAllByText("—")).toHaveLength(2);
+    expect(screen.queryByTestId("history-row-out-of-range-0")).toBeNull();
+    expect(screen.getByTestId("history-row-0")).toBeTruthy();
+  });
 });

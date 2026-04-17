@@ -75,7 +75,7 @@ export function SensorDetailScreen({ route, navigation }: Props) {
     );
   }
 
-  if (!sensorDevice || !measurementKey || !measurementLabel || !measurementRange) {
+  if (!sensorDevice || !measurementKey || !measurementLabel) {
     const unsupportedTitle = sensorDevice?.name ?? getSensorLabelFromId(sensorId);
     const unsupportedSubtype = sensorDevice?.subtype ?? "Sensor";
 
@@ -141,15 +141,13 @@ export function SensorDetailScreen({ route, navigation }: Props) {
         <View style={styles.rangeCard}>
           <Text style={styles.rangeLabel}>Mínimo</Text>
           <Text style={styles.rangeValue}>
-            {measurementRange.min.toFixed(1)}
-            {unit}
+            {measurementRange ? `${measurementRange.min.toFixed(1)}${unit}` : "—"}
           </Text>
         </View>
         <View style={styles.rangeCard}>
           <Text style={styles.rangeLabel}>Máximo</Text>
           <Text style={styles.rangeValue}>
-            {measurementRange.max.toFixed(1)}
-            {unit}
+            {measurementRange ? `${measurementRange.max.toFixed(1)}${unit}` : "—"}
           </Text>
         </View>
       </View>
@@ -166,6 +164,7 @@ export function SensorDetailScreen({ route, navigation }: Props) {
           const readingKey = READING_KEY_MAP[measurementKey];
           const value = item[readingKey];
           const isOutOfRange =
+            measurementRange != null &&
             typeof value === "number" &&
             (value < measurementRange.min || value > measurementRange.max);
 

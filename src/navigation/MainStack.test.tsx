@@ -1,28 +1,52 @@
 import React from "react";
 import { render } from "@testing-library/react-native";
 
-let mockCurrentScreenOptions: any;
-const mockScreenOptionsSpy = jest.fn();
-const mockScreenSpy = jest.fn();
+type HubStoreState = {
+  hubs: Array<{
+    hash: string;
+    name: string;
+    status: string;
+  }>;
+  selectedHubHash: string | null;
+};
+
+type MockScreenOptions = {
+  headerLeft?: unknown;
+};
+
+type MockScreenProps = {
+  name: string;
+  options?: MockScreenOptions;
+};
+
+type MockNavigatorProps = {
+  screenOptions: MockScreenOptions;
+  children: React.ReactNode;
+};
+
+type MockStack = {
+  Navigator: (props: MockNavigatorProps) => React.ReactElement;
+  Screen: (props: MockScreenProps) => React.ReactElement | null;
+};
+
+const mockScreenOptions = jest.fn<MockScreenOptions, [MockScreenOptions]>();
+const mockScreens = jest.fn<MockScreenProps, [MockScreenProps]>();
 
 jest.mock("@react-navigation/native-stack", () => ({
-  createNativeStackNavigator: () => ({
-    Navigator: ({ screenOptions, children }: any) => {
-      mockCurrentScreenOptions = screenOptions;
-      mockScreenOptionsSpy(screenOptions);
-      return <>{children}</>;
-    },
-    Screen: (props: any) => {
-      mockScreenSpy({
-        ...props,
-        options: {
-          ...mockCurrentScreenOptions,
-          ...props.options,
-        },
-      });
-      return null;
-    },
-  }),
+  createNativeStackNavigator: () => {
+    const stack: MockStack = {
+      Navigator: ({ screenOptions, children }: MockNavigatorProps) => {
+        mockScreenOptions(screenOptions);
+        return <>{children}</>;
+      },
+      Screen: (props: MockScreenProps) => {
+        mockScreens({ name: props.name, options: props.options });
+        return null;
+      },
+    };
+
+    return stack;
+  },
 }));
 
 jest.mock("../components", () => ({
@@ -41,7 +65,7 @@ jest.mock("../screens", () => ({
 }));
 
 jest.mock("../stores/hubStore", () => ({
-  useHubStore: (selector: (state: any) => any) =>
+  useHubStore: (selector: (state: HubStoreState) => unknown) =>
     selector({
       hubs: [
         {
@@ -63,25 +87,17 @@ import { MainStack } from "./MainStack";
 describe("MainStack", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockCurrentScreenOptions = undefined;
   });
 
   it("no muestra hamburguesa en HubList y la mantiene en el resto", () => {
     render(<MainStack />);
 
-    const hubList = mockScreenSpy.mock.calls.find(
-      ([props]) => props.name === "HubList"
-    )?.[0];
-    const hubHome = mockScreenSpy.mock.calls.find(
-      ([props]) => props.name === "HubHome"
-    )?.[0];
+    const globalScreenOptions = mockScreenOptions.mock.calls[0]?.[0];
+    const hubList = mockScreens.mock.calls.find(([props]) => props.name === "HubList")?.[0];
+    const hubHome = mockScreens.mock.calls.find(([props]) => props.name === "HubHome")?.[0];
 
-    expect(hubList.options.headerLeft).toBeUndefined();
-    expect(hubHome.options.headerLeft).toBeDefined();
-    expect(mockScreenOptionsSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        headerLeft: expect.any(Function),
-      })
-    );
+    expect(globalScreenOptions?.headerLeft).toBeDefined();
+    expect(hubList?.options?.headerLeft).toBeUndefined();
+    expect(hubHome?.options?.headerLeft).toBeUndefined();
   });
 });

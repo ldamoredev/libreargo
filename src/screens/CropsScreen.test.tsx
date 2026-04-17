@@ -24,6 +24,14 @@ describe("CropsScreen", () => {
           zones: ["Zona C"],
         },
         {
+          id: "crop-4",
+          name: "Tomate futuro",
+          startDate: "2026-04-18T00:00:00.000Z",
+          period: 20,
+          harvestDate: "2026-05-08T00:00:00.000Z",
+          zones: ["Zona D"],
+        },
+        {
           id: "crop-2",
           name: "Lechuga cosechada",
           startDate: "2026-03-01T00:00:00.000Z",
@@ -58,6 +66,7 @@ describe("CropsScreen", () => {
 
     expect(screen.getByText("Tomate actual")).toBeTruthy();
     expect(screen.getByText("Tomate de hoy")).toBeTruthy();
+    expect(screen.queryByText("Tomate futuro")).toBeNull();
     expect(screen.queryByText("Lechuga cosechada")).toBeNull();
   });
 

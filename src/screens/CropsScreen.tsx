@@ -28,8 +28,13 @@ function formatLocalDate(date: Date): string {
   )}`;
 }
 
-function isCurrentCrop(harvestDate: string, now: Date): boolean {
-  return harvestDate.slice(0, 10) >= formatLocalDate(now);
+function isCurrentCrop(startDate: string, harvestDate: string, now: Date): boolean {
+  const today = formatLocalDate(now);
+  return startDate.slice(0, 10) <= today && harvestDate.slice(0, 10) >= today;
+}
+
+function isExpiredCrop(harvestDate: string, now: Date): boolean {
+  return harvestDate.slice(0, 10) < formatLocalDate(now);
 }
 
 function CropCard({
@@ -128,7 +133,9 @@ export function CropsScreen() {
   const visibleCrops =
     filter === "todos"
       ? crops
-      : crops.filter((crop) => isCurrentCrop(crop.harvestDate, now));
+      : crops.filter((crop) =>
+          isCurrentCrop(crop.startDate, crop.harvestDate, now)
+        );
 
   return (
     <View style={styles.container}>
@@ -169,7 +176,7 @@ export function CropsScreen() {
         renderItem={({ item }) => (
           <CropCard
             crop={item}
-            isExpired={!isCurrentCrop(item.harvestDate, now)}
+            isExpired={isExpiredCrop(item.harvestDate, now)}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />

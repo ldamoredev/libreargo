@@ -55,7 +55,7 @@ describe("SensorDetailScreen", () => {
     a_humidity: "60.0",
     a_co2: "500",
     a_pressure: "1013",
-    wifi_status: "ok",
+    wifi_status: "connected",
     errors: {
       temperature: [],
       humidity: [],

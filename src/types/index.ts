@@ -29,7 +29,7 @@ export interface SensorData {
   readonly a_humidity: string;
   readonly a_co2: string;
   readonly a_pressure: string;
-  readonly wifi_status: string;
+  readonly wifi_status: "connected" | "disconnected" | "unknown";
   readonly errors: Readonly<{
     temperature: readonly string[];
     humidity: readonly string[];

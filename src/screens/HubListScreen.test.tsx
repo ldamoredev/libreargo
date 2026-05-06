@@ -14,6 +14,14 @@ function makeProps(): Props {
   };
 }
 
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+}));
+
+function renderScreen() {
+  return render(<HubListScreen {...makeProps()} />);
+}
+
 describe("HubListScreen", () => {
   beforeEach(() => {
     useHubStore.setState({
@@ -32,7 +40,7 @@ describe("HubListScreen", () => {
   });
 
   it("mantiene visible la guía de conexión aunque ya existan hubs", () => {
-    render(<HubListScreen {...makeProps()} />);
+    renderScreen();
 
     expect(screen.getByText("Cómo conectar un hub")).toBeTruthy();
     expect(
@@ -41,11 +49,9 @@ describe("HubListScreen", () => {
   });
 
   it("abre una ayuda con la diferencia entre Directo y Online", () => {
-    render(<HubListScreen {...makeProps()} />);
+    renderScreen();
 
-    fireEvent.press(
-      screen.getByLabelText("Información sobre modos de conexión")
-    );
+    fireEvent.press(screen.getByLabelText("Cómo conectar un hub"));
 
     expect(screen.getByText("Modo Directo")).toBeTruthy();
     expect(screen.getByText("Modo Online")).toBeTruthy();

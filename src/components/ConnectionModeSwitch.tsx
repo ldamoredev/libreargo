@@ -7,69 +7,70 @@ interface ConnectionModeSwitchProps {
   readonly onToggle: (mode: ConnectionMode) => void;
 }
 
+const MODES: readonly { key: ConnectionMode; label: string }[] = [
+  { key: "directo", label: "Directo" },
+  { key: "online", label: "Online" },
+];
+
 export function ConnectionModeSwitch({
   mode,
   onToggle,
 }: ConnectionModeSwitchProps) {
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={[styles.option, mode === "directo" && styles.optionActive]}
-        onPress={() => onToggle("directo")}
-      >
-        <Text
-          style={[
-            styles.optionText,
-            mode === "directo" && styles.optionTextActive,
-          ]}
-        >
-          Directo
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.option, mode === "online" && styles.optionActive]}
-        onPress={() => onToggle("online")}
-      >
-        <Text
-          style={[
-            styles.optionText,
-            mode === "online" && styles.optionTextActive,
-          ]}
-        >
-          Online
-        </Text>
-      </TouchableOpacity>
+      {MODES.map(({ key, label }) => {
+        const on = mode === key;
+        return (
+          <TouchableOpacity
+            key={key}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+            onPress={() => onToggle(key)}
+            activeOpacity={0.85}
+            style={[styles.option, on && styles.optionActive]}
+          >
+            <Text
+              style={[styles.optionText, on && styles.optionTextActive]}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     flexDirection: "row",
-    backgroundColor: "#E0E0E0",
-    borderRadius: 20,
-    padding: 3,
-  },
-  option: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 17,
-  },
-  optionActive: {
     backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 4,
+    gap: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 2,
+    elevation: 1,
+  },
+  option: {
+    flex: 1,
+    minHeight: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+  },
+  optionActive: {
+    backgroundColor: COLORS.primary,
   },
   optionText: {
-    fontSize: 13,
-    fontWeight: "500",
+    fontSize: 18,
+    fontWeight: "700",
     color: COLORS.textSecondary,
   },
   optionTextActive: {
-    color: COLORS.primary,
-    fontWeight: "700",
+    color: "#fff",
   },
 });

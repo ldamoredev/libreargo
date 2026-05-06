@@ -88,9 +88,9 @@ describe("CropsScreen", () => {
 
     fireEvent.press(screen.getByText("Actuales"));
 
-    expect(screen.getByText("No hay cultivos en el período actual")).toBeTruthy();
+    expect(screen.getByText("No hay cultivos en curso")).toBeTruthy();
     expect(
-      screen.getByText("Cambiar a Todos para ver cultivos cosechados.")
+      screen.getByText("Cambiar a Todo para ver los cosechados.")
     ).toBeTruthy();
     expect(screen.queryByText("Lechuga vieja")).toBeNull();
   });

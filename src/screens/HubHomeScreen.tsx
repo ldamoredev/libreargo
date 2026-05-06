@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
   StyleSheet,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -12,15 +13,17 @@ import { COLORS } from "../constants";
 import { useHubStore } from "../stores/hubStore";
 import { useHubDataStore } from "../stores/hubDataStore";
 import {
-  AlarmSummaryCard,
   DeviceListItem,
   DeviceFilter,
   ZoneFilterSheet,
+  HubStatusBanner,
 } from "../components";
 import type { FilterType } from "../components";
-import type { Device } from "../types";
+import type { Device, RelayState, SensorRangeVisual } from "../types";
 import type { RootStackParamList } from "../navigation/types";
 import { getSensorRangeVisual } from "../utils/getSensorRangeVisual";
+import { semaforo, type SemaforoState } from "../utils/semaforo";
+import { IcoZona } from "../components/icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HubHome">;
 
@@ -34,11 +37,28 @@ function resolveFilter(
       : "todos";
 }
 
+interface SectionHeaderProps {
+  readonly label: string;
+}
+
+function SectionHeader({ label }: SectionHeaderProps) {
+  return <Text style={styles.sectionHeader}>{label}</Text>;
+}
+
 export function HubHomeScreen({ navigation, route }: Props) {
   const { hubHash, filter: initialFilter } = route.params;
   const hub = useHubStore((s) => s.hubs.find((h) => h.hash === hubHash));
-  const { alarms, devices, config, actual, loading, error, loadHubData, clearData } =
-    useHubDataStore();
+  const {
+    alarms,
+    devices,
+    config,
+    actual,
+    relays,
+    loading,
+    error,
+    loadHubData,
+    clearData,
+  } = useHubDataStore();
   const [filter, setFilter] = useState<FilterType>(() =>
     resolveFilter(initialFilter)
   );
@@ -51,13 +71,14 @@ export function HubHomeScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (hub) {
+      navigation.setOptions({ title: hub.name });
       loadHubData(hub.ip);
     }
 
     return () => {
       clearData();
     };
-  }, [hub, loadHubData, clearData]);
+  }, [hub, navigation, loadHubData, clearData]);
 
   const availableZones = useMemo(() => {
     const zones = new Set<string>();
@@ -83,19 +104,41 @@ export function HubHomeScreen({ navigation, route }: Props) {
     );
   }, [devices, filter, selectedZones]);
 
-  const getSensorVisualForDevice = useCallback(
-    (device: Device) => {
-      if (device.type !== "sensor") {
-        return null;
+  const sensorVisuals = useMemo(() => {
+    const map = new Map<string, SensorRangeVisual | null>();
+    devices.forEach((device) => {
+      if (device.type === "sensor") {
+        map.set(device.id, getSensorRangeVisual(device, config, actual));
       }
+    });
+    return map;
+  }, [devices, config, actual]);
 
-      const measurementKey = device.sensorType;
-      if (!measurementKey) return null;
+  const relayByAddress = useMemo(() => {
+    const map = new Map<number, RelayState>();
+    relays.forEach((relay) => map.set(relay.address, relay));
+    return map;
+  }, [relays]);
 
-      return getSensorRangeVisual(device, config, actual);
-    },
-    [actual, config]
+  const activeAlarmCount = useMemo(
+    () => alarms.filter((a) => a.status === "active").length,
+    [alarms]
   );
+
+  const overallState = useMemo(() => {
+    let badCount = 0;
+    let warnCount = 0;
+    sensorVisuals.forEach((visual) => {
+      if (!visual) return;
+      const state = semaforo(visual.current, visual.min, visual.max).state;
+      if (state === "bad") badCount += 1;
+      else if (state === "warn") warnCount += 1;
+    });
+    const totalBadCount = badCount + activeAlarmCount;
+    const state: SemaforoState =
+      totalBadCount > 0 ? "bad" : warnCount > 0 ? "warn" : "ok";
+    return { state, badCount: totalBadCount, warnCount };
+  }, [sensorVisuals, activeAlarmCount]);
 
   const handleDevicePress = useCallback(
     (device: Device) => {
@@ -114,9 +157,40 @@ export function HubHomeScreen({ navigation, route }: Props) {
     [navigation, hubHash]
   );
 
-  const handleAlarmsPress = useCallback(() => {
+  const handleAlarmSummaryPress = useCallback(() => {
     navigation.navigate("Alarms", { hubHash });
   }, [navigation, hubHash]);
+
+  const sections = useMemo(() => {
+    type Item =
+      | { kind: "section"; key: string; label: string }
+      | { kind: "device"; key: string; device: Device };
+
+    const sensors = filteredDevices.filter((d) => d.type === "sensor");
+    const actuators = filteredDevices.filter((d) => d.type === "actuator");
+    const items: Item[] = [];
+    if (sensors.length > 0 && filter !== "actuadores") {
+      items.push({
+        kind: "section",
+        key: "sec-sensors",
+        label: "Mediciones",
+      });
+      sensors.forEach((d) =>
+        items.push({ kind: "device", key: d.id, device: d })
+      );
+    }
+    if (actuators.length > 0 && filter !== "sensores") {
+      items.push({
+        kind: "section",
+        key: "sec-actuators",
+        label: "Actuadores",
+      });
+      actuators.forEach((d) =>
+        items.push({ kind: "device", key: d.id, device: d })
+      );
+    }
+    return items;
+  }, [filteredDevices, filter]);
 
   const zonesButtonDisabled = availableZones.length === 0;
   const zonesButtonLabel =
@@ -156,21 +230,53 @@ export function HubHomeScreen({ navigation, route }: Props) {
   return (
     <View style={styles.container}>
       <FlatList
-        data={filteredDevices}
-        keyExtractor={(device) => device.id}
-        renderItem={({ item }) => (
-          <DeviceListItem
-            device={item}
-            sensorVisual={getSensorVisualForDevice(item)}
-            onPress={handleDevicePress}
-          />
-        )}
+        data={sections}
+        keyExtractor={(item) => item.key}
+        renderItem={({ item }) => {
+          if (item.kind === "section") {
+            return <SectionHeader label={item.label} />;
+          }
+          const device = item.device;
+          const visual = sensorVisuals.get(device.id) ?? null;
+          const relay =
+            device.type === "actuator" && device.relayAddress != null
+              ? (relayByAddress.get(device.relayAddress) ?? null)
+              : null;
+          return (
+            <View style={styles.deviceWrap}>
+              <DeviceListItem
+                device={device}
+                sensorVisual={visual}
+                relay={relay}
+                onPress={handleDevicePress}
+              />
+            </View>
+          );
+        }}
         ListHeaderComponent={
-          <>
-            <AlarmSummaryCard alarms={alarms} onPress={handleAlarmsPress} />
-            <View style={styles.filtersRow}>
+          <View style={styles.headerWrap}>
+            <HubStatusBanner
+              state={overallState.state}
+              badCount={overallState.badCount}
+              warnCount={overallState.warnCount}
+              onPress={
+                activeAlarmCount > 0 ? handleAlarmSummaryPress : undefined
+              }
+            />
+            <ScrollView
+              testID="hub-home-filters-row"
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filtersRow}
+            >
               <DeviceFilter active={filter} onChange={setFilter} />
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Filtrar por zonas"
+                accessibilityState={{
+                  selected: selectedZones.length > 0,
+                  disabled: zonesButtonDisabled,
+                }}
                 style={[
                   styles.zonesBtn,
                   selectedZones.length > 0 && styles.zonesBtnActive,
@@ -178,8 +284,14 @@ export function HubHomeScreen({ navigation, route }: Props) {
                 ]}
                 onPress={() => setZoneSheetVisible(true)}
                 disabled={zonesButtonDisabled}
-                activeOpacity={0.7}
+                activeOpacity={0.85}
               >
+                <IcoZona
+                  size={18}
+                  color={
+                    selectedZones.length > 0 ? "#fff" : COLORS.textSecondary
+                  }
+                />
                 <Text
                   style={[
                     styles.zonesBtnText,
@@ -190,8 +302,8 @@ export function HubHomeScreen({ navigation, route }: Props) {
                   {zonesButtonLabel}
                 </Text>
               </TouchableOpacity>
-            </View>
-          </>
+            </ScrollView>
+          </View>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -244,19 +356,37 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   list: {
-    paddingBottom: 24,
+    paddingBottom: 32,
+  },
+  headerWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
+    gap: 12,
+  },
+  deviceWrap: {
+    paddingHorizontal: 16,
+    marginTop: 12,
   },
   filtersRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 12,
     paddingRight: 16,
   },
   zonesBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: "#E0E0E0",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    minHeight: 48,
+    borderRadius: 999,
+    backgroundColor: COLORS.surface,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
   },
   zonesBtnActive: {
     backgroundColor: COLORS.primary,
@@ -265,15 +395,25 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   zonesBtnText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 15,
+    fontWeight: "700",
     color: COLORS.textSecondary,
   },
   zonesBtnTextActive: {
-    color: COLORS.surface,
+    color: "#fff",
   },
   zonesBtnTextDisabled: {
     color: COLORS.textDisabled,
+  },
+  sectionHeader: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.textMuted,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    paddingHorizontal: 16,
+    marginTop: 18,
+    marginBottom: 4,
   },
   empty: {
     alignItems: "center",

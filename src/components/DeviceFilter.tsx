@@ -9,7 +9,7 @@ interface DeviceFilterProps {
 }
 
 const FILTERS: readonly { key: FilterType; label: string }[] = [
-  { key: "todos", label: "Todos" },
+  { key: "todos", label: "Todo" },
   { key: "sensores", label: "Sensores" },
   { key: "actuadores", label: "Actuadores" },
 ];
@@ -17,19 +17,24 @@ const FILTERS: readonly { key: FilterType; label: string }[] = [
 export function DeviceFilter({ active, onChange }: DeviceFilterProps) {
   return (
     <View style={styles.container}>
-      {FILTERS.map(({ key, label }) => (
-        <TouchableOpacity
-          key={key}
-          style={[styles.tab, active === key && styles.tabActive]}
-          onPress={() => onChange(key)}
-        >
-          <Text
-            style={[styles.tabText, active === key && styles.tabTextActive]}
+      {FILTERS.map(({ key, label }) => {
+        const on = active === key;
+        return (
+          <TouchableOpacity
+            key={key}
+            accessibilityRole="button"
+            accessibilityLabel={`Filtrar por ${label}`}
+            accessibilityState={{ selected: on }}
+            onPress={() => onChange(key)}
+            activeOpacity={0.85}
+            style={[styles.tab, on && styles.tabActive]}
           >
-            {label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+            <Text style={[styles.tabText, on && styles.tabTextActive]}>
+              {label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -37,25 +42,34 @@ export function DeviceFilter({ active, onChange }: DeviceFilterProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    marginHorizontal: 16,
-    marginVertical: 12,
     gap: 8,
+    paddingVertical: 4,
   },
   tab: {
-    paddingVertical: 8,
+    minHeight: 48,
+    justifyContent: "center",
     paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: "#E0E0E0",
+    borderRadius: 999,
+    backgroundColor: COLORS.surface,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
   },
   tabActive: {
     backgroundColor: COLORS.primary,
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 16,
+    fontWeight: "700",
     color: COLORS.textSecondary,
   },
   tabTextActive: {
-    color: COLORS.surface,
+    color: "#fff",
   },
 });

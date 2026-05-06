@@ -1,211 +1,238 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { COLORS } from "../constants";
-import type { Alarm, HubConfig } from "../types";
+import type { Alarm, AlarmDataType, HubConfig } from "../types";
 import { getMeasurementRange } from "../features/sensors/getMeasurementRange";
+import { Card, IconBadge, ZonaPill, BigButton } from "./ui";
+import {
+  IcoTermometro,
+  IcoGota,
+  IcoCO2,
+  IcoPresion,
+  IcoReloj,
+  IcoCheck,
+  type IconProps,
+} from "./icons";
+import type { ComponentType } from "react";
 
-const UNIT_MAP: Record<string, string> = {
+const UNIT_MAP: Record<AlarmDataType, string> = {
   temperature: "°C",
   humidity: "%",
   co2: "ppm",
   pressure: "hPa",
 };
 
-const LABEL_MAP: Record<string, string> = {
+const TYPE_LABEL: Record<AlarmDataType, string> = {
   temperature: "Temperatura",
   humidity: "Humedad",
-  co2: "CO2",
+  co2: "CO₂",
   pressure: "Presión",
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  active: "Activa",
-  acknowledged: "Reconocida",
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  active: COLORS.error,
-  acknowledged: COLORS.textSecondary,
+const ICON_MAP: Record<AlarmDataType, ComponentType<IconProps>> = {
+  temperature: IcoTermometro,
+  humidity: IcoGota,
+  co2: IcoCO2,
+  pressure: IcoPresion,
 };
 
 interface AlarmCardProps {
   readonly alarm: Alarm;
   readonly config: HubConfig | null;
   readonly onAcknowledge: (id: string) => void;
+  readonly onSnooze?: (id: string) => void;
 }
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const sameDate = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (sameDate(d, today)) return `Hoy ${time}`;
+  if (sameDate(d, yesterday)) return `Ayer ${time}`;
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${time}`;
 }
 
-export function AlarmCard({ alarm, config, onAcknowledge }: AlarmCardProps) {
+export function AlarmCard({ alarm, config, onAcknowledge, onSnooze }: AlarmCardProps) {
   const unit = UNIT_MAP[alarm.dataType] ?? "";
-  const label = LABEL_MAP[alarm.dataType] ?? alarm.dataType;
-  const statusColor = STATUS_COLOR[alarm.status] ?? COLORS.textSecondary;
+  const typeLabel = TYPE_LABEL[alarm.dataType] ?? "";
+  const Icon = ICON_MAP[alarm.dataType] ?? IcoTermometro;
   const isActive = alarm.status === "active";
   const range = getMeasurementRange(alarm.dataType, config);
-  const isCurrentOutOfRange =
-    range !== null &&
-    (alarm.currentValue < range.min || alarm.currentValue > range.max);
 
   return (
-    <View style={[styles.container, !isActive && styles.containerInactive]}>
-      <View style={styles.header}>
-        <View style={[styles.dot, { backgroundColor: statusColor }]} />
-        <Text style={styles.date}>{formatDate(alarm.timestamp)}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: statusColor + "20" }]}>
-          <Text style={[styles.statusText, { color: statusColor }]}>
-            {STATUS_LABEL[alarm.status] ?? alarm.status}
+    <Card
+      style={[
+        styles.card,
+        isActive ? styles.cardActive : styles.cardInactive,
+      ]}
+    >
+      <View style={styles.body}>
+        <IconBadge
+          bg={isActive ? COLORS.errorSoft : "#EEEAE0"}
+          size={88}
+        >
+          <Icon
+            size={60}
+            color={isActive ? COLORS.error : COLORS.textMuted}
+          />
+        </IconBadge>
+        <View style={styles.info}>
+          <View style={styles.metaRow}>
+            <IcoReloj size={16} color={COLORS.textMuted} />
+            <Text style={styles.metaText}>{formatDate(alarm.timestamp)}</Text>
+          </View>
+          {typeLabel.length > 0 && (
+            <Text style={styles.typeLabel}>{typeLabel}</Text>
+          )}
+          <View style={styles.valueRow}>
+            <Text
+              style={[
+                styles.value,
+                { color: isActive ? COLORS.error : COLORS.text },
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {alarm.currentValue}
+            </Text>
+            <Text
+              style={[
+                styles.unit,
+                { color: isActive ? COLORS.error : COLORS.textSecondary },
+              ]}
+            >
+              {unit}
+            </Text>
+          </View>
+          <Text style={styles.alertText}>
+            Disparada en {alarm.alertValue}
+            {unit}
           </Text>
+          {range && (
+            <Text style={styles.rangeText}>
+              Rango: {range.min}–{range.max}
+              {unit}
+            </Text>
+          )}
+          {alarm.zones.length > 0 && (
+            <View style={styles.zonesRow}>
+              {alarm.zones.slice(0, 2).map((zone) => (
+                <ZonaPill
+                  key={zone}
+                  name={zone}
+                  tone={isActive ? "green" : "gray"}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </View>
-
-      <Text style={styles.type}>{label}</Text>
-
-      <View style={styles.valuesRow}>
-        <View style={styles.valueBlock}>
-          <Text style={styles.valueLabel}>Alerta</Text>
-          <Text style={[styles.value, { color: COLORS.error }]}>
-            {alarm.alertValue}{unit}
-          </Text>
-        </View>
-        <View style={styles.valueBlock}>
-          <Text style={styles.valueLabel}>Actual</Text>
-          <Text
-            style={[styles.value, isCurrentOutOfRange && styles.valueOutOfRange]}
-          >
-            {alarm.currentValue}{unit}
-          </Text>
-        </View>
-      </View>
-
-      {range && (
-        <View style={styles.rangeRow}>
-          <View style={styles.valueBlock}>
-            <Text style={styles.valueLabel}>Mínimo</Text>
-            <Text style={styles.rangeValue}>{range.min.toFixed(1)}{unit}</Text>
-          </View>
-          <View style={styles.valueBlock}>
-            <Text style={styles.valueLabel}>Máximo</Text>
-            <Text style={styles.rangeValue}>{range.max.toFixed(1)}{unit}</Text>
-          </View>
-        </View>
-      )}
-
-      {alarm.zones.length > 0 && (
-        <Text style={styles.zones}>{alarm.zones.join(", ")}</Text>
-      )}
-
       {isActive && (
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={styles.btnPrimary}
+        <View style={styles.actionWrap}>
+          <BigButton
+            label="Lo vi / Entendido"
+            icon={<IcoCheck size={28} color="#fff" />}
             onPress={() => onAcknowledge(alarm.id)}
-          >
-            <Text style={styles.btnPrimaryText}>Reconocer</Text>
-          </TouchableOpacity>
+            accessibilityLabel="Reconocer alarma"
+          />
+          {onSnooze && (
+            <BigButton
+              label="Posponer 1h"
+              variant="outline"
+              onPress={() => onSnooze(alarm.id)}
+              accessibilityLabel="Posponer alarma una hora"
+            />
+          )}
         </View>
       )}
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: COLORS.surface,
+  card: {
     marginHorizontal: 16,
-    marginVertical: 6,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: 12,
+    padding: 0,
+    overflow: "hidden",
   },
-  containerInactive: {
-    opacity: 0.6,
+  cardActive: {
+    borderWidth: 2,
+    borderColor: COLORS.error,
   },
-  header: {
+  cardInactive: {
+    opacity: 0.85,
+  },
+  body: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    gap: 16,
+    padding: 16,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
-  },
-  date: {
+  info: {
     flex: 1,
-    fontSize: 13,
-    color: COLORS.textSecondary,
+    minWidth: 0,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
   },
-  statusText: {
-    fontSize: 11,
+  metaText: {
+    fontSize: 14,
     fontWeight: "600",
+    color: COLORS.textMuted,
   },
-  type: {
-    fontSize: 17,
+  typeLabel: {
+    fontSize: 18,
     fontWeight: "700",
     color: COLORS.text,
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  valuesRow: {
-    flexDirection: "row",
-    gap: 24,
-    marginBottom: 8,
-  },
-  rangeRow: {
-    flexDirection: "row",
-    gap: 24,
-    marginBottom: 8,
-  },
-  valueBlock: {},
-  valueLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  value: {
-    fontSize: 18,
+  alertText: {
+    fontSize: 14,
     fontWeight: "600",
-    color: COLORS.text,
-  },
-  valueOutOfRange: {
-    color: COLORS.error,
-  },
-  rangeValue: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: COLORS.text,
-  },
-  zones: {
-    fontSize: 12,
-    color: COLORS.primary,
-    marginBottom: 8,
-  },
-  actions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 10,
+    color: COLORS.textMuted,
     marginTop: 4,
   },
-  btnPrimary: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: COLORS.primary,
+  valueRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
   },
-  btnPrimaryText: {
+  value: {
+    fontSize: 40,
+    fontWeight: "800",
+    lineHeight: 44,
+    letterSpacing: -0.5,
+  },
+  unit: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  rangeText: {
     fontSize: 14,
-    color: COLORS.surface,
     fontWeight: "600",
+    color: COLORS.textMuted,
+    marginTop: 6,
+  },
+  zonesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 10,
+  },
+  actionWrap: {
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+    gap: 10,
   },
 });

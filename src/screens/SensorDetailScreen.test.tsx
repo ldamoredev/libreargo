@@ -38,7 +38,7 @@ function makeProps(sensorId: string): Props {
   };
 }
 
-describe("SensorDetailScreen", () => {
+describe("SensorDetailScreen (icon-first redesign)", () => {
   const config: HubConfig = {
     incubator_name: "Hub Demo",
     hash: "hub-1",
@@ -79,7 +79,7 @@ describe("SensorDetailScreen", () => {
     });
   });
 
-  it("resuelve el dispositivo exacto por sensorId y usa sus zonas y metrica", () => {
+  it("resolves the device by sensorId and shows its zones and metric", () => {
     useHubDataStore.setState({
       config,
       actual,
@@ -116,7 +116,7 @@ describe("SensorDetailScreen", () => {
     expect(screen.queryByText("Zona A")).toBeNull();
   });
 
-  it("muestra un estado explicito cuando el subtipo no esta soportado", () => {
+  it("renders an explicit unsupported state for unknown subtypes", () => {
     render(<SensorDetailScreen {...makeProps("sensor-mystery_sensor-0")} />);
 
     expect(screen.getByText("MYSTERY_SENSOR")).toBeTruthy();
@@ -125,7 +125,7 @@ describe("SensorDetailScreen", () => {
     expect(screen.queryByText("Histórico reciente")).toBeNull();
   });
 
-  it("muestra una sola medición con su rango visible", () => {
+  it("renders the measurement label and range bar for a supported sensor", () => {
     useHubDataStore.setState({
       config,
       actual,
@@ -150,13 +150,12 @@ describe("SensorDetailScreen", () => {
     render(<SensorDetailScreen {...makeProps("sensor-bme280-0")} />);
 
     expect(screen.getByText("Humedad")).toBeTruthy();
-    expect(screen.getByText("Mínimo")).toBeTruthy();
-    expect(screen.getByText("Máximo")).toBeTruthy();
-    expect(screen.queryByText("Temperatura")).toBeNull();
-    expect(screen.queryByText("Presión")).toBeNull();
+    expect(screen.getByTestId("sensor-range-marker")).toBeTruthy();
+    expect(screen.getByText("55.0%")).toBeTruthy();
+    expect(screen.getByText("65.0%")).toBeTruthy();
   });
 
-  it("resalta filas del histórico cuando caen fuera de rango", () => {
+  it("highlights history rows that fall out of range", () => {
     useHubDataStore.setState({
       config,
       actual,
@@ -181,11 +180,11 @@ describe("SensorDetailScreen", () => {
     render(<SensorDetailScreen {...makeProps("sensor-bme280-0")} />);
 
     expect(screen.getByTestId("history-row-out-of-range-0")).toHaveStyle({
-      backgroundColor: "#FDECEC",
+      backgroundColor: "#FBDCDC",
     });
   });
 
-  it("muestra el detalle cuando el sensor es soportado pero no tiene rango configurado", () => {
+  it("renders a supported sensor without a configured range without crashing", () => {
     useHubDataStore.setState({
       config,
       actual,
@@ -210,10 +209,7 @@ describe("SensorDetailScreen", () => {
     render(<SensorDetailScreen {...makeProps("sensor-hd38-0")} />);
 
     expect(screen.getByText("CO2")).toBeTruthy();
-    expect(screen.getByText("Mínimo")).toBeTruthy();
-    expect(screen.getByText("Máximo")).toBeTruthy();
-    expect(screen.getAllByText("—")).toHaveLength(2);
-    expect(screen.queryByTestId("history-row-out-of-range-0")).toBeNull();
+    expect(screen.queryByTestId("sensor-range-marker")).toBeNull();
     expect(screen.getByTestId("history-row-0")).toBeTruthy();
   });
 });

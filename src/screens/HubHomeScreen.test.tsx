@@ -1,5 +1,5 @@
 import React from "react";
-import { render, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { HubHomeScreen } from "./HubHomeScreen";
 import { useHubStore } from "../stores/hubStore";
@@ -217,5 +217,62 @@ describe("HubHomeScreen", () => {
         },
       });
     });
+  });
+
+  it("permite que los filtros bajen de linea para que Zonas no quede fuera de pantalla", () => {
+    render(<HubHomeScreen {...makeProps()} />);
+
+    expect(screen.getByTestId("hub-home-filters-row")).toHaveStyle({
+      flexWrap: "wrap",
+    });
+  });
+
+  it("navega a alarmas al tocar el resumen cuando hay alertas activas", () => {
+    useHubDataStore.setState({
+      alarms: [
+        {
+          id: "alarm-001",
+          timestamp: "2026-03-30T10:15:00Z",
+          dataType: "temperature",
+          alertValue: 38.5,
+          currentValue: 37.8,
+          zones: ["Zona A"],
+          status: "active",
+        },
+      ],
+    } as Partial<ReturnType<typeof useHubDataStore.getState>>);
+    const props = makeProps();
+
+    render(<HubHomeScreen {...props} />);
+    fireEvent.press(screen.getByText("Revisar ahora"));
+
+    expect(props.navigation.navigate).toHaveBeenCalledWith("Alarms", {
+      hubHash: "hub-1",
+    });
+  });
+
+  it("muestra estado de revision cuando hay alertas activas aunque las mediciones esten en rango", () => {
+    useHubDataStore.setState({
+      actual: {
+        ...actual,
+        a_temperature: "37.5",
+      },
+      alarms: [
+        {
+          id: "alarm-001",
+          timestamp: "2026-03-30T10:15:00Z",
+          dataType: "temperature",
+          alertValue: 38.5,
+          currentValue: 37.8,
+          zones: ["Zona A"],
+          status: "active",
+        },
+      ],
+    } as Partial<ReturnType<typeof useHubDataStore.getState>>);
+
+    render(<HubHomeScreen {...makeProps()} />);
+
+    expect(screen.getByText("Revisar ahora")).toBeTruthy();
+    expect(screen.getByText("1 problema detectado")).toBeTruthy();
   });
 });

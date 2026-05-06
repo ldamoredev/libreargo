@@ -12,13 +12,22 @@ import { getMeasurementRange } from "../features/sensors/getMeasurementRange";
 import { useHubDataStore } from "../stores/hubDataStore";
 import { mockReadings } from "../mocks";
 import type { RootStackParamList } from "../navigation/types";
+import { Card, IconBadge, ZonaPill } from "../components/ui";
+import { getDeviceIcon } from "../components/icons/getDeviceIcon";
+import { semaforo, type SemaforoState } from "../utils/semaforo";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SensorDetail">;
+
+const STATE_HEADLINE: Record<SemaforoState, string> = {
+  ok: "Todo bien",
+  warn: "Atención",
+  bad: "Fuera de rango",
+};
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function getSensorLabelFromId(sensorId: string): string {
@@ -81,11 +90,11 @@ export function SensorDetailScreen({ route, navigation }: Props) {
 
     return (
       <View style={styles.container}>
-        <View style={styles.infoCard}>
-          <Text style={styles.sensorType}>{unsupportedTitle}</Text>
-          <Text style={styles.sensorSubtype}>{unsupportedSubtype}</Text>
-        </View>
-        <View style={styles.unsupportedCard}>
+        <Card style={styles.padCard}>
+          <Text style={styles.deviceName}>{unsupportedTitle}</Text>
+          <Text style={styles.deviceSubtype}>{unsupportedSubtype}</Text>
+        </Card>
+        <Card style={[styles.padCard, styles.unsupportedCard]}>
           <Text style={styles.unsupportedTitle}>Sensor no soportado</Text>
           <Text style={styles.unsupportedBody}>
             Este dispositivo todavía no tiene una vista de detalle disponible.
@@ -93,81 +102,121 @@ export function SensorDetailScreen({ route, navigation }: Props) {
           <Text style={styles.link} onPress={() => navigation.goBack()}>
             Volver
           </Text>
-        </View>
+        </Card>
       </View>
     );
   }
 
+  const Icon = getDeviceIcon(sensorDevice);
   const actualValue = Number.parseFloat(actual[ACTUAL_KEY_MAP[measurementKey]]);
-  const actualValueLabel = Number.isFinite(actualValue)
-    ? actualValue.toFixed(1)
-    : "—";
+  const hasValue = Number.isFinite(actualValue);
   const unit = UNIT_MAP[measurementKey] ?? "";
+  const status = measurementRange
+    ? semaforo(actualValue, measurementRange.min, measurementRange.max)
+    : semaforo(null, 0, 1);
+  const ratio =
+    measurementRange && measurementRange.max > measurementRange.min
+      ? (actualValue - measurementRange.min) /
+        (measurementRange.max - measurementRange.min)
+      : 0;
+  const progress = Math.min(100, Math.max(0, ratio * 100));
 
   return (
     <View style={styles.container}>
-      <View style={styles.infoCard}>
-        <Text style={styles.sensorType}>{sensorDevice.name}</Text>
-        <Text style={styles.sensorSubtype}>{sensorDevice.subtype}</Text>
-        {zones.length > 0 && (
-          <View style={styles.zonesRow}>
-            {zones.map((zone) => (
-              <View key={zone} style={styles.zoneChip}>
-                <Text style={styles.zoneChipText}>{zone}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-
-      {errors.length > 0 && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerTitle}>Errores activos</Text>
-          {errors.map((error, index) => (
-            <Text key={`${error}-${index}`} style={styles.errorBannerText}>
-              {error}
-            </Text>
-          ))}
-        </View>
-      )}
-
-      <View style={styles.measurementCard}>
-        <Text style={styles.measurementLabel}>{measurementLabel}</Text>
-        <Text style={styles.measurementValue}>{actualValueLabel}</Text>
-        <Text style={styles.measurementUnit}>{unit}</Text>
-      </View>
-
-      <View style={styles.rangeRow}>
-        <View style={styles.rangeCard}>
-          <Text style={styles.rangeLabel}>Mínimo</Text>
-          <Text style={styles.rangeValue}>
-            {measurementRange ? `${measurementRange.min.toFixed(1)}${unit}` : "—"}
-          </Text>
-        </View>
-        <View style={styles.rangeCard}>
-          <Text style={styles.rangeLabel}>Máximo</Text>
-          <Text style={styles.rangeValue}>
-            {measurementRange ? `${measurementRange.max.toFixed(1)}${unit}` : "—"}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>Histórico reciente</Text>
-      <View style={styles.tableHeader}>
-        <Text style={[styles.tableCell, styles.tableCellTime]}>Hora</Text>
-        <Text style={styles.tableCell}>Valor</Text>
-      </View>
       <FlatList
         data={mockReadings.slice(0, 15)}
         keyExtractor={(_, index) => String(index)}
+        ListHeaderComponent={
+          <View style={styles.headerWrap}>
+            <View
+              style={[styles.heroCard, { backgroundColor: status.bg }]}
+              accessibilityLabel={`${measurementLabel} ${hasValue ? actualValue.toFixed(1) : "sin dato"} ${unit}`}
+            >
+              <IconBadge bg="rgba(255,255,255,0.6)" size={120}>
+                <Icon size={84} color={status.fg} />
+              </IconBadge>
+              <Text style={[styles.heroState, { color: status.fg }]}>
+                {STATE_HEADLINE[status.state]}
+              </Text>
+              <View style={styles.heroValueRow}>
+                <Text
+                  style={[styles.heroValue, { color: status.fg }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {hasValue ? actualValue.toFixed(1) : "—"}
+                </Text>
+                <Text style={[styles.heroUnit, { color: status.fg }]}>
+                  {unit}
+                </Text>
+              </View>
+              <Text style={styles.heroLabel}>{measurementLabel}</Text>
+            </View>
+
+            {measurementRange && hasValue && (
+              <Card style={styles.rangeCard}>
+                <Text style={styles.rangeTitle}>Rango configurado</Text>
+                <View style={styles.rangeBar}>
+                  <View testID="sensor-range-marker-rail" style={styles.rangeRail}>
+                    <View
+                      testID="sensor-range-marker"
+                      style={[
+                        styles.rangeMarker,
+                        {
+                          left: `${progress}%`,
+                          backgroundColor: status.fg,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+                <View style={styles.rangeBounds}>
+                  <Text style={styles.rangeBound}>
+                    {measurementRange.min.toFixed(1)}
+                    {unit}
+                  </Text>
+                  <Text style={styles.rangeBound}>
+                    {measurementRange.max.toFixed(1)}
+                    {unit}
+                  </Text>
+                </View>
+              </Card>
+            )}
+
+            <Card style={styles.padCard}>
+              <Text style={styles.deviceName}>{sensorDevice.name}</Text>
+              <Text style={styles.deviceSubtype}>{sensorDevice.subtype}</Text>
+              {zones.length > 0 && (
+                <View style={styles.zonesRow}>
+                  {zones.map((zone) => (
+                    <ZonaPill key={zone} name={zone} />
+                  ))}
+                </View>
+              )}
+            </Card>
+
+            {errors.length > 0 && (
+              <Card style={[styles.padCard, styles.errorCard]}>
+                <Text style={styles.errorTitle}>Errores activos</Text>
+                {errors.map((error, index) => (
+                  <Text key={`${error}-${index}`} style={styles.errorBody}>
+                    {error}
+                  </Text>
+                ))}
+              </Card>
+            )}
+
+            <Text style={styles.sectionTitle}>Histórico reciente</Text>
+          </View>
+        }
         renderItem={({ item, index }) => {
           const readingKey = READING_KEY_MAP[measurementKey];
           const value = item[readingKey];
-          const isOutOfRange =
-            measurementRange != null &&
-            typeof value === "number" &&
-            (value < measurementRange.min || value > measurementRange.max);
-
+          const itemStatus =
+            measurementRange && typeof value === "number"
+              ? semaforo(value, measurementRange.min, measurementRange.max)
+              : null;
+          const isOutOfRange = itemStatus?.state === "bad";
           return (
             <View
               testID={
@@ -175,18 +224,26 @@ export function SensorDetailScreen({ route, navigation }: Props) {
                   ? `history-row-out-of-range-${index}`
                   : `history-row-${index}`
               }
-              style={[styles.tableRow, isOutOfRange && styles.tableRowAlert]}
+              style={[
+                styles.historyRow,
+                itemStatus && { backgroundColor: itemStatus.bg },
+              ]}
             >
-              <Text style={[styles.tableCell, styles.tableCellTime]}>
-                {formatTime(item.timestamp)}
-              </Text>
-              <Text style={styles.tableCell}>
-                {typeof value === "number" ? `${value.toFixed(1)}${unit}` : "—"}
+              <Text style={styles.historyTime}>{formatTime(item.timestamp)}</Text>
+              <Text
+                style={[
+                  styles.historyValue,
+                  itemStatus && { color: itemStatus.fg },
+                ]}
+              >
+                {typeof value === "number"
+                  ? `${value.toFixed(1)}${unit}`
+                  : "—"}
               </Text>
             </View>
           );
         }}
-        contentContainerStyle={styles.tableContent}
+        contentContainerStyle={styles.listContent}
       />
     </View>
   );
@@ -213,173 +270,157 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: "600",
   },
-  infoCard: {
-    backgroundColor: COLORS.surface,
-    margin: 16,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+  listContent: {
+    paddingBottom: 32,
   },
-  sensorType: {
-    fontSize: 22,
+  headerWrap: {
+    padding: 16,
+    gap: 16,
+  },
+  heroCard: {
+    borderRadius: 24,
+    padding: 28,
+    alignItems: "center",
+    gap: 14,
+  },
+  heroState: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  heroValueRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
+  },
+  heroValue: {
+    fontSize: 84,
+    fontWeight: "800",
+    lineHeight: 88,
+    letterSpacing: -2,
+  },
+  heroUnit: {
+    fontSize: 32,
     fontWeight: "700",
+  },
+  heroLabel: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: COLORS.textSecondary,
+  },
+  rangeCard: {
+    gap: 12,
+  },
+  rangeTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.textMuted,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  rangeBar: {
+    height: 14,
+    borderRadius: 999,
+    backgroundColor: COLORS.divider,
+    position: "relative",
+  },
+  rangeRail: {
+    ...StyleSheet.absoluteFillObject,
+    left: 9,
+    right: 9,
+  },
+  rangeMarker: {
+    position: "absolute",
+    top: -3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    transform: [{ translateX: -9 }],
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  rangeBounds: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  rangeBound: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.textSecondary,
+  },
+  padCard: {
+    gap: 4,
+  },
+  deviceName: {
+    fontSize: 22,
+    fontWeight: "800",
     color: COLORS.text,
   },
-  sensorSubtype: {
+  deviceSubtype: {
     fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
   zonesRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
-    marginTop: 10,
-  },
-  zoneChip: {
-    backgroundColor: "#E8F5E9",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  zoneChipText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: "500",
-  },
-  errorBanner: {
-    backgroundColor: "#FFEBEE",
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 10,
-    padding: 12,
-  },
-  errorBannerTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.error,
-    marginBottom: 4,
-  },
-  errorBannerText: {
-    fontSize: 13,
-    color: COLORS.error,
+    marginTop: 12,
   },
   unsupportedCard: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 16,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
+    gap: 8,
   },
   unsupportedTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: COLORS.text,
-    marginBottom: 8,
   },
   unsupportedBody: {
     fontSize: 14,
     lineHeight: 20,
     color: COLORS.textSecondary,
   },
-  measurementCard: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
+  errorCard: {
+    backgroundColor: COLORS.errorSoft,
+    gap: 4,
   },
-  measurementLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: COLORS.error,
   },
-  measurementValue: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  measurementUnit: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
-  rangeRow: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    gap: 10,
-    marginBottom: 16,
-  },
-  rangeCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  rangeLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-  },
-  rangeValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: COLORS.text,
+  errorBody: {
+    fontSize: 14,
+    color: COLORS.error,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
-    color: COLORS.text,
-    marginHorizontal: 16,
-    marginBottom: 8,
+    color: COLORS.textMuted,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    marginTop: 8,
   },
-  tableHeader: {
+  historyRow: {
     flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 6,
+    backgroundColor: COLORS.surface,
   },
-  tableRow: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
-  },
-  tableRowAlert: {
-    backgroundColor: "#FDECEC",
-  },
-  tableCell: {
-    flex: 1,
-    fontSize: 13,
-    color: COLORS.text,
-    textAlign: "center",
-  },
-  tableCellTime: {
-    flex: 1.2,
-    textAlign: "left",
+  historyTime: {
+    fontSize: 16,
+    fontWeight: "600",
     color: COLORS.textSecondary,
   },
-  tableContent: {
-    paddingBottom: 24,
+  historyValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.text,
   },
 });

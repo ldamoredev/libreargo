@@ -8,7 +8,10 @@ import {
   StyleSheet,
   Pressable,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS } from "../constants";
+import { BigButton } from "./ui";
+import { IcoCheck, IcoX, IcoZona } from "./icons";
 
 interface ZoneFilterSheetProps {
   readonly visible: boolean;
@@ -25,7 +28,9 @@ export function ZoneFilterSheet({
   onChange,
   onClose,
 }: ZoneFilterSheetProps) {
+  const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState<readonly string[]>(selectedZones);
+  const footerPaddingBottom = Math.max(24, insets.bottom + 20);
 
   useEffect(() => {
     if (visible) {
@@ -54,49 +59,95 @@ export function ZoneFilterSheet({
       transparent
       animationType="slide"
       onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>
+        <Pressable
+          testID="zone-filter-sheet"
+          style={styles.sheet}
+          onPress={(event) => event.stopPropagation()}
+        >
+          <View style={styles.handle} />
           <View style={styles.header}>
-            <Text style={styles.title}>Filtrar por zonas</Text>
-            <TouchableOpacity onPress={handleClear}>
-              <Text style={styles.clearBtn}>Limpiar</Text>
+            <View style={styles.headerLeft}>
+              <View style={styles.headerIcon}>
+                <IcoZona size={24} color={COLORS.primary} />
+              </View>
+              <Text style={styles.title}>Filtrar por zonas</Text>
+            </View>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
+              onPress={onClose}
+              style={styles.closeBtn}
+              activeOpacity={0.85}
+            >
+              <IcoX size={22} color={COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.list}>
+          <ScrollView
+            testID="zone-filter-list"
+            style={styles.listScroll}
+            contentContainerStyle={styles.list}
+          >
             {availableZones.length === 0 ? (
               <Text style={styles.empty}>No hay zonas disponibles</Text>
             ) : (
               availableZones.map((zone) => {
                 const checked = draft.includes(zone);
-
                 return (
                   <TouchableOpacity
                     key={zone}
-                    style={styles.row}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked }}
+                    accessibilityLabel={zone}
+                    style={[styles.row, checked && styles.rowChecked]}
                     onPress={() => toggle(zone)}
-                    activeOpacity={0.7}
+                    activeOpacity={0.85}
                   >
                     <View
-                      style={[styles.checkbox, checked && styles.checkboxChecked]}
+                      style={[
+                        styles.checkbox,
+                        checked && styles.checkboxChecked,
+                      ]}
                     >
-                      {checked && <Text style={styles.checkmark}>✓</Text>}
+                      {checked && <IcoCheck size={20} color="#fff" />}
                     </View>
-                    <Text style={styles.rowLabel}>{zone}</Text>
+                    <IcoZona
+                      size={22}
+                      color={checked ? COLORS.primary : COLORS.textMuted}
+                    />
+                    <Text
+                      style={[
+                        styles.rowLabel,
+                        checked && styles.rowLabelChecked,
+                      ]}
+                    >
+                      {zone}
+                    </Text>
                   </TouchableOpacity>
                 );
               })
             )}
           </ScrollView>
 
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.btnCancel} onPress={onClose}>
-              <Text style={styles.btnCancelText}>Cancelar</Text>
+          <View
+            testID="zone-filter-footer"
+            style={[styles.footer, { paddingBottom: footerPaddingBottom }]}
+          >
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={handleClear}
+              style={styles.clearBtn}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.clearBtnText}>Limpiar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.btnApply} onPress={handleApply}>
-              <Text style={styles.btnApplyText}>Aplicar</Text>
-            </TouchableOpacity>
+            <View style={styles.applySlot}>
+              <BigButton label="Aplicar" onPress={handleApply} />
+            </View>
           </View>
         </Pressable>
       </Pressable>
@@ -107,103 +158,137 @@ export function ZoneFilterSheet({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-    maxHeight: "70%",
+    width: "100%",
+    maxHeight: "82%",
+    minHeight: 360,
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 8,
+    overflow: "hidden",
+  },
+  handle: {
+    alignSelf: "center",
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: COLORS.divider,
+    marginBottom: 8,
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingTop: 8,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
     color: COLORS.text,
   },
-  clearBtn: {
-    fontSize: 14,
-    color: COLORS.primary,
-    fontWeight: "500",
+  closeBtn: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+    backgroundColor: COLORS.surface,
+  },
+  listScroll: {
+    flex: 1,
   },
   list: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 8,
   },
   empty: {
     textAlign: "center",
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    paddingVertical: 24,
+    color: COLORS.textMuted,
+    fontSize: 15,
+    fontWeight: "600",
+    paddingVertical: 32,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
     gap: 12,
+    minHeight: 64,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: COLORS.surface,
+  },
+  rowChecked: {
+    backgroundColor: COLORS.primarySoft,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 2,
-    borderColor: COLORS.border,
-    justifyContent: "center",
+    borderColor: COLORS.divider,
+    backgroundColor: COLORS.surface,
     alignItems: "center",
+    justifyContent: "center",
   },
   checkboxChecked: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
-  checkmark: {
-    color: COLORS.surface,
-    fontSize: 14,
-    fontWeight: "700",
-  },
   rowLabel: {
-    fontSize: 15,
+    flex: 1,
+    fontSize: 17,
+    fontWeight: "700",
     color: COLORS.text,
+  },
+  rowLabelChecked: {
+    color: COLORS.primaryDark,
   },
   footer: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 12,
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: COLORS.background,
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 14,
+    paddingBottom: 24,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: COLORS.divider,
+    zIndex: 1,
+    elevation: 1,
   },
-  btnCancel: {
-    paddingVertical: 10,
+  clearBtn: {
+    minHeight: 56,
     paddingHorizontal: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
   },
-  btnCancelText: {
-    fontSize: 15,
+  clearBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
     color: COLORS.textSecondary,
-    fontWeight: "500",
   },
-  btnApply: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: COLORS.primary,
-  },
-  btnApplyText: {
-    fontSize: 15,
-    color: COLORS.surface,
-    fontWeight: "600",
+  applySlot: {
+    flex: 1,
   },
 });

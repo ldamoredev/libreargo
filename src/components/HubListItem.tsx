@@ -1,6 +1,8 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { COLORS } from "../constants";
 import type { Hub } from "../types";
+import { Card, IconBadge, Dot } from "./ui";
+import { IcoChevron, IcoWifi } from "./icons";
 
 interface HubListItemProps {
   readonly hub: Hub;
@@ -11,85 +13,75 @@ export function HubListItem({ hub, onPress }: HubListItemProps) {
   const isConnected = hub.status === "conectado";
 
   return (
-    <TouchableOpacity
-      style={styles.container}
+    <Card
       onPress={() => onPress(hub)}
-      activeOpacity={0.7}
+      accessibilityLabel={`${hub.name}, ${isConnected ? "conectado" : "desconectado"}`}
+      style={styles.card}
     >
-      <View style={styles.row}>
-        <View
-          style={[
-            styles.indicator,
-            { backgroundColor: isConnected ? COLORS.connected : COLORS.disconnected },
-          ]}
+      <IconBadge bg={isConnected ? COLORS.successSoft : "#EEE7D9"} size={64}>
+        <IcoWifi
+          size={34}
+          color={isConnected ? COLORS.success : COLORS.disconnected}
         />
-        <View style={styles.info}>
-          <Text style={styles.name}>{hub.name}</Text>
-          <Text style={styles.ip}>{hub.ip}</Text>
-        </View>
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: isConnected ? "#E8F5E9" : "#F5F5F5" },
-          ]}
-        >
+      </IconBadge>
+      <View style={styles.info}>
+        <Text style={styles.name} numberOfLines={1}>
+          {hub.name}
+        </Text>
+        <Text style={styles.ip} numberOfLines={1}>
+          {hub.ip}
+        </Text>
+        <View style={styles.statusRow}>
+          <Dot color={isConnected ? COLORS.success : COLORS.disconnected} size={10} />
           <Text
             style={[
-              styles.badgeText,
-              { color: isConnected ? COLORS.connected : COLORS.textSecondary },
+              styles.statusText,
+              {
+                color: isConnected ? COLORS.success : COLORS.textMuted,
+              },
             ]}
           >
-            {isConnected ? "Conectado" : "Desconectado"}
+            {isConnected ? "Conectado" : "Sin conexión"}
           </Text>
         </View>
       </View>
-    </TouchableOpacity>
+      <IcoChevron size={28} color={COLORS.textMuted} />
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 16,
-    marginVertical: 6,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  row: {
+  card: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  indicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
+    gap: 16,
+    marginHorizontal: 16,
+    marginVertical: 6,
+    padding: 18,
   },
   info: {
     flex: 1,
+    minWidth: 0,
   },
   name: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
     color: COLORS.text,
   },
   ip: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 2,
+    fontSize: 14,
+    color: COLORS.textMuted,
+    marginTop: 4,
+    fontVariant: ["tabular-nums"],
   },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "500",
+  statusText: {
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

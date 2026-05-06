@@ -12,6 +12,9 @@ import {
   RecommendationsScreen,
 } from "../screens";
 import { HamburgerButton, MenuDrawer } from "../components";
+import { IcoCampana } from "../components/icons";
+import { TouchableOpacity, View } from "react-native";
+import { useHubDataStore } from "../stores/hubDataStore";
 import { navigate } from "./navigationRef";
 import type { RootStackParamList } from "./types";
 import type { Hub } from "../types";
@@ -40,6 +43,50 @@ export function MainStack() {
   const hamburgerButton = useCallback(
     () => <HamburgerButton onPress={openMenu} />,
     [openMenu]
+  );
+
+  const alarmCount = useHubDataStore((s) =>
+    s.alarms.filter((a) => a.status === "active").length
+  );
+
+  const renderAlarmsButton = useCallback(
+    (onPress: () => void) => (
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={
+          alarmCount > 0
+            ? `Alarmas, ${alarmCount} activas`
+            : "Alarmas, sin alarmas activas"
+        }
+        onPress={onPress}
+        activeOpacity={0.7}
+        style={{
+          width: 44,
+          height: 44,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <IcoCampana size={26} color="#fff" />
+        {alarmCount > 0 && (
+          <View
+            accessibilityElementsHidden
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 6,
+              width: 12,
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: COLORS.error,
+              borderWidth: 2,
+              borderColor: COLORS.primary,
+            }}
+          />
+        )}
+      </TouchableOpacity>
+    ),
+    [alarmCount]
   );
 
   const handleMenuSelect = useCallback(
@@ -98,7 +145,13 @@ export function MainStack() {
         <Stack.Screen
           name="HubHome"
           component={HubHomeScreen}
-          options={{ title: "Home del Hub" }}
+          options={({ route }) => ({
+            title: "Hub",
+            headerRight: () =>
+              renderAlarmsButton(() =>
+                navigate("Alarms", { hubHash: route.params.hubHash })
+              ),
+          })}
         />
         <Stack.Screen
           name="Alarms"

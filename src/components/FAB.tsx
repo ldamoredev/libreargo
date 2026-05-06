@@ -1,15 +1,25 @@
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { TouchableOpacity, StyleSheet } from "react-native";
 import { COLORS } from "../constants";
+import { IcoPlus } from "./icons";
 
 interface FABProps {
   readonly onPress: () => void;
-  readonly label?: string;
+  readonly accessibilityLabel?: string;
 }
 
-export function FAB({ onPress, label = "+" }: FABProps) {
+export function FAB({
+  onPress,
+  accessibilityLabel = "Agregar hub",
+}: FABProps) {
   return (
-    <TouchableOpacity style={styles.fab} onPress={onPress} activeOpacity={0.8}>
-      <Text style={styles.label}>{label}</Text>
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={styles.fab}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <IcoPlus size={44} color="#fff" />
     </TouchableOpacity>
   );
 }
@@ -17,24 +27,18 @@ export function FAB({ onPress, label = "+" }: FABProps) {
 const styles = StyleSheet.create({
   fab: {
     position: "absolute",
-    bottom: 24,
+    bottom: 32,
     right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: COLORS.primary,
-    justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  label: {
-    fontSize: 28,
-    color: COLORS.surface,
-    fontWeight: "300",
-    marginTop: -2,
+    justifyContent: "center",
+    shadowColor: "#2E7D32",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });

@@ -1,4 +1,5 @@
-import { TouchableOpacity, View, StyleSheet } from "react-native";
+import { TouchableOpacity, StyleSheet } from "react-native";
+import { IcoMenu } from "./icons";
 
 interface HamburgerButtonProps {
   readonly onPress: () => void;
@@ -7,30 +8,27 @@ interface HamburgerButtonProps {
 
 export function HamburgerButton({
   onPress,
-  color = "#FFFFFF",
+  color = "#fff",
 }: HamburgerButtonProps) {
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel="Abrir menú"
       onPress={onPress}
       style={styles.button}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      activeOpacity={0.7}
     >
-      <View style={[styles.line, { backgroundColor: color }]} />
-      <View style={[styles.line, { backgroundColor: color }]} />
-      <View style={[styles.line, { backgroundColor: color }]} />
+      <IcoMenu size={28} color={color} />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    padding: 8,
+    width: 44,
+    height: 44,
+    alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-  },
-  line: {
-    width: 22,
-    height: 2.5,
-    borderRadius: 1,
   },
 });

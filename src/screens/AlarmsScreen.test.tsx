@@ -51,58 +51,65 @@ function makeProps(): Props {
   };
 }
 
-describe("AlarmsScreen", () => {
+describe("AlarmsScreen (icon-first redesign)", () => {
   beforeEach(() => {
     seedState();
   });
 
-  it("muestra sólo Reconocer para alarmas activas", () => {
+  it("renders an acknowledge button on active alarms", () => {
     render(<AlarmsScreen {...makeProps()} />);
 
-    expect(screen.queryByText("Posponer")).toBeNull();
-    expect(screen.getByText("Reconocer")).toBeTruthy();
+    expect(screen.getByText("Lo vi / Entendido")).toBeTruthy();
   });
 
-  it("permite reconocer una alarma", () => {
+  it("acknowledges an alarm and removes it from the active tab", () => {
     render(<AlarmsScreen {...makeProps()} />);
 
-    fireEvent.press(screen.getByText("Reconocer"));
+    fireEvent.press(screen.getByText("Lo vi / Entendido"));
 
-    expect(screen.getByText("Reconocida")).toBeTruthy();
-    expect(screen.queryByText("Reconocer")).toBeNull();
+    expect(screen.queryByText("Lo vi / Entendido")).toBeNull();
+    expect(screen.getByText("No hay alarmas activas")).toBeTruthy();
   });
 
-  it("muestra rango mínimo y máximo para una alarma compatible", () => {
+  it("renders the configured range as inline text when config is available", () => {
     useHubDataStore.setState({
       config: hubConfig,
     } as Partial<ReturnType<typeof useHubDataStore.getState>>);
 
     render(<AlarmsScreen {...makeProps()} />);
 
-    expect(screen.getByText("Mínimo")).toBeTruthy();
-    expect(screen.getByText("Máximo")).toBeTruthy();
-    expect(screen.getByText("37.3°C")).toBeTruthy();
-    expect(screen.getByText("37.7°C")).toBeTruthy();
+    expect(screen.getByText("Rango: 37.3–37.7°C")).toBeTruthy();
   });
 
-  it("muestra el valor actual en rojo si sigue fuera de rango", () => {
+  it("uses the red semaphore color for an active alarm", () => {
     useHubDataStore.setState({
       config: hubConfig,
     } as Partial<ReturnType<typeof useHubDataStore.getState>>);
 
     render(<AlarmsScreen {...makeProps()} />);
 
-    expect(screen.getByText("37.8°C")).toHaveStyle({ color: "#D32F2F" });
+    expect(screen.getByText("37.8")).toHaveStyle({ color: "#C62828" });
   });
 
-  it("vuelve al color normal cuando el valor actual regresa al rango", () => {
-    seedState(37.5);
-    useHubDataStore.setState({
-      config: hubConfig,
-    } as Partial<ReturnType<typeof useHubDataStore.getState>>);
-
+  it("shows the active count in the summary banner", () => {
     render(<AlarmsScreen {...makeProps()} />);
 
-    expect(screen.getByText("37.5°C")).toHaveStyle({ color: "#212121" });
+    expect(screen.getByText("1 activa")).toBeTruthy();
+  });
+
+  it("shows the data type label and the alert trigger value", () => {
+    render(<AlarmsScreen {...makeProps()} />);
+
+    expect(screen.getByText("Temperatura")).toBeTruthy();
+    expect(screen.getByText("Disparada en 38.5°C")).toBeTruthy();
+  });
+
+  it("snoozes an active alarm and removes it from the active tab", () => {
+    render(<AlarmsScreen {...makeProps()} />);
+
+    fireEvent.press(screen.getByText("Posponer 1h"));
+
+    expect(screen.queryByText("Posponer 1h")).toBeNull();
+    expect(screen.getByText("No hay alarmas activas")).toBeTruthy();
   });
 });

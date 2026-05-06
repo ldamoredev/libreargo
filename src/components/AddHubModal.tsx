@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORS, DIRECT_MODE_IP } from "../constants";
 import type { ConnectionMode, Hub } from "../types";
 import {
@@ -14,6 +15,8 @@ import {
   validateHubConfig,
   InvalidHubConfigError,
 } from "../services/hubDataService";
+import { BigButton, IconBadge } from "./ui";
+import { IcoAlerta, IcoCheck, IcoWifi, IcoX } from "./icons";
 
 type AddHubStep = "confirm-switch" | "searching" | "error";
 
@@ -36,6 +39,7 @@ export function AddHubModal({
   onCancel,
   onSwitchToDirecto,
 }: AddHubModalProps) {
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<AddHubStep>(() => initialStep(initialMode));
   const [errorMessage, setErrorMessage] = useState<string>("");
 
@@ -102,36 +106,73 @@ export function AddHubModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.overlay}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+      statusBarTranslucent
+      navigationBarTranslucent
+    >
+      <View
+        style={[
+          styles.overlay,
+          {
+            paddingTop: Math.max(insets.top, 20),
+            paddingBottom: Math.max(insets.bottom, 20),
+          },
+        ]}
+      >
         <View style={styles.card}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar"
+            onPress={onCancel}
+            style={styles.closeBtn}
+            activeOpacity={0.85}
+          >
+            <IcoX size={22} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+
           {step === "confirm-switch" && (
             <>
-              <Text style={styles.title}>Cambiar a modo Directo</Text>
+              <View style={styles.heroIcon}>
+                <IconBadge bg={COLORS.primarySoft} size={96}>
+                  <IcoWifi size={56} color={COLORS.primary} />
+                </IconBadge>
+              </View>
+              <Text style={styles.title}>Cambiar a Directo</Text>
               <Text style={styles.body}>
                 Para agregar un hub necesitamos pasar a modo Directo.
-                Asegurate de estar conectado al Wi-Fi del hub (red tipo
-                "moni-XXXX") y confirmá para continuar.
+                Asegurate de estar conectado al Wi-Fi del hub (red
+                "moni-XXXX") y tocá Continuar.
               </Text>
-              <View style={styles.buttons}>
-                <TouchableOpacity style={styles.btnCancel} onPress={onCancel}>
-                  <Text style={styles.btnCancelText}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.btnConfirm}
-                  onPress={handleConfirmSwitch}
-                >
-                  <Text style={styles.btnConfirmText}>Continuar</Text>
-                </TouchableOpacity>
+              <View style={styles.actions}>
+                <View style={styles.actionSlot}>
+                  <BigButton
+                    label="Cancelar"
+                    onPress={onCancel}
+                    variant="outline"
+                    color={COLORS.textSecondary}
+                  />
+                </View>
+                <View style={styles.actionSlot}>
+                  <BigButton label="Continuar" onPress={handleConfirmSwitch} />
+                </View>
               </View>
             </>
           )}
 
           {step === "searching" && (
             <>
-              <Text style={styles.title}>Buscando hub...</Text>
+              <View style={styles.heroIcon}>
+                <IconBadge bg={COLORS.primarySoft} size={96}>
+                  <IcoWifi size={56} color={COLORS.primary} />
+                </IconBadge>
+              </View>
+              <Text style={styles.title}>Buscando hub…</Text>
               <Text style={styles.body}>
-                Consultando el hub conectado por Wi-Fi. Esto puede tardar unos
+                Consultando el hub conectado por Wi-Fi. Puede tardar unos
                 segundos.
               </Text>
               <ActivityIndicator
@@ -144,15 +185,29 @@ export function AddHubModal({
 
           {step === "error" && (
             <>
-              <Text style={styles.title}>No se pudo agregar el hub</Text>
+              <View style={styles.heroIcon}>
+                <IconBadge bg={COLORS.errorSoft} size={96}>
+                  <IcoAlerta size={56} color={COLORS.error} />
+                </IconBadge>
+              </View>
+              <Text style={styles.title}>No se pudo agregar</Text>
               <Text style={styles.body}>{errorMessage}</Text>
-              <View style={styles.buttons}>
-                <TouchableOpacity style={styles.btnCancel} onPress={onCancel}>
-                  <Text style={styles.btnCancelText}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.btnConfirm} onPress={handleRetry}>
-                  <Text style={styles.btnConfirmText}>Reintentar</Text>
-                </TouchableOpacity>
+              <View style={styles.actions}>
+                <View style={styles.actionSlot}>
+                  <BigButton
+                    label="Cancelar"
+                    onPress={onCancel}
+                    variant="outline"
+                    color={COLORS.textSecondary}
+                  />
+                </View>
+                <View style={styles.actionSlot}>
+                  <BigButton
+                    label="Reintentar"
+                    onPress={handleRetry}
+                    icon={<IcoCheck size={26} color="#fff" />}
+                  />
+                </View>
               </View>
             </>
           )}
@@ -165,59 +220,57 @@ export function AddHubModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(0,0,0,0.55)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    padding: 20,
   },
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 24,
     width: "100%",
-    maxWidth: 400,
+    maxWidth: 440,
+    backgroundColor: COLORS.surface,
+    borderRadius: 24,
+    padding: 24,
+    paddingTop: 32,
+    alignItems: "center",
+    gap: 16,
+  },
+  closeBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+  },
+  heroIcon: {
+    marginBottom: 4,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     color: COLORS.text,
-    marginBottom: 12,
+    textAlign: "center",
+    letterSpacing: -0.3,
   },
   body: {
-    fontSize: 15,
+    fontSize: 16,
     color: COLORS.textSecondary,
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  buttons: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 12,
-  },
-  btnCancel: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  btnCancelText: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    fontWeight: "500",
-  },
-  btnConfirm: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: COLORS.primary,
-  },
-  btnConfirmText: {
-    fontSize: 15,
-    color: COLORS.surface,
-    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 24,
   },
   loader: {
     marginVertical: 8,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+    marginTop: 8,
+  },
+  actionSlot: {
+    flex: 1,
   },
 });

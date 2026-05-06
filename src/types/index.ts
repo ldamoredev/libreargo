@@ -87,7 +87,7 @@ export interface HubConfig {
 
 // --- Alarma ---
 export type AlarmDataType = "temperature" | "humidity" | "co2" | "pressure";
-export type AlarmStatus = "active" | "acknowledged";
+export type AlarmStatus = "active" | "acknowledged" | "snoozed";
 
 export interface Alarm {
   readonly id: string;
@@ -97,6 +97,7 @@ export interface Alarm {
   readonly currentValue: number;
   readonly zones: readonly string[];
   readonly status: AlarmStatus;
+  readonly snoozedUntil?: string; // ISO 8601
 }
 
 // --- Cultivo ---

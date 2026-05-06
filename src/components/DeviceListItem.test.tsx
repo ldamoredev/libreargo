@@ -1,27 +1,28 @@
 import React from "react";
-import { render, screen } from "@testing-library/react-native";
+import { render, screen, fireEvent } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import { DeviceListItem } from "./DeviceListItem";
-import type { Device, SensorRangeVisual } from "../types";
+import type { Device, RelayState, SensorRangeVisual } from "../types";
 
-describe("DeviceListItem", () => {
+describe("DeviceListItem (icon-first redesign)", () => {
   const sensor: Device = {
     id: "sensor-scd30-0",
     type: "sensor",
     name: "SCD30",
     subtype: "scd30",
+    sensorType: "temperature",
     zones: ["Zona A"],
   };
 
   const visual: SensorRangeVisual = {
     label: "Temperatura",
     unit: "°C",
-    min: 37.3,
-    max: 37.7,
+    min: 18,
+    max: 28,
     current: 25.5,
   };
 
-  it("renderiza el indicador cuando recibe un visual de sensor", () => {
+  it("renders the value, unit, and range bounds for a sensor with visual", () => {
     render(
       <DeviceListItem
         device={sensor}
@@ -30,19 +31,19 @@ describe("DeviceListItem", () => {
       />
     );
 
-    expect(screen.getByText("Temperatura")).toBeTruthy();
-    expect(screen.getByText("37.3°C")).toBeTruthy();
-    expect(screen.getByText("37.7°C")).toBeTruthy();
-    expect(screen.getByText("25.5°C")).toBeTruthy();
+    expect(screen.getByText("25.5")).toBeTruthy();
+    expect(screen.getByText("°C")).toBeTruthy();
+    expect(screen.getByText("18°C")).toBeTruthy();
+    expect(screen.getByText("28°C")).toBeTruthy();
   });
 
-  it("no renderiza el indicador si no recibe visual", () => {
+  it("does not render a range bar when no visual is provided", () => {
     render(<DeviceListItem device={sensor} onPress={jest.fn()} />);
 
-    expect(screen.queryByText("Temperatura")).toBeNull();
+    expect(screen.queryByTestId("sensor-range-marker")).toBeNull();
   });
 
-  it("mantiene el marker dentro del track en los extremos", () => {
+  it("keeps the range marker inside the rail at min and max", () => {
     const { rerender } = render(
       <DeviceListItem
         device={sensor}
@@ -79,8 +80,8 @@ describe("DeviceListItem", () => {
     });
   });
 
-  it("resalta sensores fuera de rango con fondo rojo suave", () => {
-    const { getByRole } = render(
+  it("uses the red semaphore color when a sensor is out of range", () => {
+    render(
       <DeviceListItem
         device={{
           id: "sensor-bme280-0",
@@ -101,6 +102,41 @@ describe("DeviceListItem", () => {
       />
     );
 
-    expect(getByRole("button")).toHaveStyle({ backgroundColor: "#FDECEC" });
+    const marker = screen.getByTestId("sensor-range-marker");
+    expect(StyleSheet.flatten(marker.props.style)).toMatchObject({
+      backgroundColor: "#C62828",
+    });
+  });
+
+  it("renders ENCENDIDO / APAGADO for actuators based on relay state", () => {
+    const onPress = jest.fn();
+    const actuatorDevice: Device = {
+      id: "relay-1",
+      type: "actuator",
+      name: "Bomba de riego",
+      subtype: "relay_2ch",
+      zones: ["Invernadero 1"],
+      relayAddress: 1,
+    };
+    const onRelay: RelayState = {
+      type: "relay_2ch",
+      address: 1,
+      alias: "Bomba",
+      active: true,
+      state: [true, false],
+      input_state: [false, false],
+    };
+
+    render(
+      <DeviceListItem
+        device={actuatorDevice}
+        relay={onRelay}
+        onPress={onPress}
+      />
+    );
+
+    expect(screen.getByText("ENCENDIDO")).toBeTruthy();
+    fireEvent.press(screen.getByRole("button"));
+    expect(onPress).toHaveBeenCalledWith(actuatorDevice);
   });
 });

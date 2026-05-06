@@ -1,126 +1,238 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { COLORS } from "../constants";
-import type { Device, SensorRangeVisual } from "../types";
-import { SensorRangeIndicator } from "./SensorRangeIndicator";
+import type { Device, RelayState, SensorRangeVisual } from "../types";
+import { Card, IconBadge, ZonaPill } from "./ui";
+import { getDeviceIcon } from "./icons/getDeviceIcon";
+import { IcoChevron } from "./icons";
+import { semaforo, type SemaforoState } from "../utils/semaforo";
 
 interface DeviceListItemProps {
   readonly device: Device;
   readonly sensorVisual?: SensorRangeVisual | null;
+  readonly relay?: RelayState | null;
   readonly onPress: (device: Device) => void;
 }
 
-const SENSOR_ICON = "S";
-const ACTUATOR_ICON = "A";
+const MARKER_SIZE = 12;
+const MARKER_RADIUS = MARKER_SIZE / 2;
+
+const STATE_LABEL: Record<SemaforoState, string> = {
+  ok: "todo bien",
+  warn: "cerca del límite",
+  bad: "fuera de rango",
+};
+
+function formatNumber(value: number, unit: string): string {
+  if (Number.isInteger(value)) return `${value}${unit}`;
+  return `${value.toFixed(1)}${unit}`;
+}
+
+function isRelayOn(relay: RelayState | null | undefined): boolean {
+  if (!relay) return false;
+  return relay.active && relay.state.some(Boolean);
+}
 
 export function DeviceListItem({
   device,
   sensorVisual,
+  relay,
   onPress,
 }: DeviceListItemProps) {
+  const Icon = getDeviceIcon(device);
   const isSensor = device.type === "sensor";
-  const isSensorOutOfRange =
-    isSensor &&
-    sensorVisual != null &&
-    (sensorVisual.current < sensorVisual.min ||
-      sensorVisual.current > sensorVisual.max);
 
-  return (
-    <TouchableOpacity
-      accessibilityRole="button"
-      accessibilityLabel={
-        isSensorOutOfRange
-          ? `${device.name}, alerta fuera de rango`
-          : device.name
-      }
-      style={[styles.container, isSensorOutOfRange && styles.containerAlert]}
-      onPress={() => onPress(device)}
-      activeOpacity={0.7}
-    >
-      <View
-        style={[
-          styles.icon,
-          { backgroundColor: isSensor ? "#E3F2FD" : "#FFF3E0" },
-        ]}
+  if (isSensor && sensorVisual) {
+    const { min, max, current, unit } = sensorVisual;
+    const status = semaforo(current, min, max);
+    const ratio = max > min ? (current - min) / (max - min) : 0;
+    const progress = Math.min(100, Math.max(0, ratio * 100));
+
+    return (
+      <Card
+        onPress={() => onPress(device)}
+        accessibilityLabel={`${sensorVisual.label} ${formatNumber(current, unit)}, ${STATE_LABEL[status.state]}`}
+        style={styles.row}
       >
-        <Text
+        <IconBadge bg={status.bg} size={96}>
+          <Icon size={64} color={status.fg} />
+        </IconBadge>
+        <View style={styles.body}>
+          <View style={styles.valueRow}>
+            <Text
+              style={[styles.value, { color: status.fg }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {formatNumber(current, "")}
+            </Text>
+            <Text style={styles.unit}>{unit}</Text>
+          </View>
+          <View style={styles.rangeWrap}>
+            <View style={styles.track}>
+              <View testID="sensor-range-marker-rail" style={styles.markerRail}>
+                <View
+                  testID="sensor-range-marker"
+                  style={[
+                    styles.marker,
+                    { left: `${progress}%`, backgroundColor: status.fg },
+                  ]}
+                />
+              </View>
+            </View>
+            <View style={styles.bounds}>
+              <Text style={styles.bound}>{formatNumber(min, unit)}</Text>
+              <Text style={styles.bound}>{formatNumber(max, unit)}</Text>
+            </View>
+          </View>
+        </View>
+        <IcoChevron size={28} color={COLORS.textMuted} />
+      </Card>
+    );
+  }
+
+  if (isSensor) {
+    // Sensor without a range visual: show the icon + name only, no stale data.
+    return (
+      <Card
+        onPress={() => onPress(device)}
+        accessibilityLabel={device.name}
+        style={styles.row}
+      >
+        <IconBadge bg={COLORS.surfaceAlt} size={88}>
+          <Icon size={56} color={COLORS.textMuted} />
+        </IconBadge>
+        <View style={styles.body}>
+          <Text style={styles.deviceName}>{device.name}</Text>
+          {device.zones.length > 0 && (
+            <View style={styles.zonesRow}>
+              {device.zones.slice(0, 2).map((zone) => (
+                <ZonaPill key={zone} name={zone} tone="gray" />
+              ))}
+            </View>
+          )}
+        </View>
+        <IcoChevron size={28} color={COLORS.textMuted} />
+      </Card>
+    );
+  }
+
+  // --- Actuator ---
+  const on = isRelayOn(relay);
+  return (
+    <Card
+      onPress={() => onPress(device)}
+      accessibilityLabel={`${device.name}, ${on ? "encendido" : "apagado"}`}
+      style={styles.row}
+    >
+      <IconBadge bg={on ? COLORS.actuatorSoft : "#EEEAE0"} size={96}>
+        <Icon size={64} color={on ? COLORS.actuator : COLORS.actuatorOff} />
+      </IconBadge>
+      <View style={styles.body}>
+        <View
           style={[
-            styles.iconText,
-            { color: isSensor ? "#1565C0" : "#E65100" },
+            styles.statePill,
+            { backgroundColor: on ? COLORS.actuator : COLORS.actuatorOff },
           ]}
         >
-          {isSensor ? SENSOR_ICON : ACTUATOR_ICON}
-        </Text>
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.name}>{device.name}</Text>
-        <Text style={styles.subtype}>
-          {isSensor ? "Sensor" : "Actuador"} · {device.subtype}
-        </Text>
-        {device.zones.length > 0 && (
-          <Text style={styles.zones} numberOfLines={1}>
-            {device.zones.join(", ")}
+          <Text style={styles.statePillText}>
+            {on ? "ENCENDIDO" : "APAGADO"}
           </Text>
+        </View>
+        {device.zones.length > 0 && (
+          <View style={styles.zonesRow}>
+            {device.zones.slice(0, 2).map((zone) => (
+              <ZonaPill key={zone} name={zone} />
+            ))}
+          </View>
         )}
-        {isSensor && sensorVisual ? (
-          <SensorRangeIndicator visual={sensorVisual} />
-        ) : null}
       </View>
-      <Text style={styles.chevron}>›</Text>
-    </TouchableOpacity>
+      <IcoChevron size={28} color={COLORS.textMuted} />
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 16,
-    marginVertical: 4,
-    borderRadius: 10,
-    padding: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    gap: 16,
+    padding: 16,
   },
-  containerAlert: {
-    backgroundColor: "#FDECEC",
+  body: {
+    flex: 1,
+    minWidth: 0,
   },
-  icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
+  valueRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
   },
-  iconText: {
+  value: {
+    fontSize: 44,
+    fontWeight: "800",
+    lineHeight: 48,
+    letterSpacing: -1,
+  },
+  unit: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: COLORS.textSecondary,
+  },
+  rangeWrap: {
+    marginTop: 12,
+  },
+  track: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: COLORS.divider,
+    position: "relative",
+  },
+  markerRail: {
+    ...StyleSheet.absoluteFillObject,
+    left: MARKER_RADIUS,
+    right: MARKER_RADIUS,
+  },
+  marker: {
+    position: "absolute",
+    top: -1,
+    width: MARKER_SIZE,
+    height: MARKER_SIZE,
+    borderRadius: MARKER_RADIUS,
+    transform: [{ translateX: -MARKER_RADIUS }],
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  bounds: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 6,
+  },
+  bound: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.textMuted,
+  },
+  deviceName: {
     fontSize: 18,
     fontWeight: "700",
-  },
-  info: {
-    flex: 1,
-  },
-  name: {
-    fontSize: 15,
-    fontWeight: "600",
     color: COLORS.text,
   },
-  subtype: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 2,
+  statePill: {
+    alignSelf: "flex-start",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 999,
   },
-  zones: {
-    fontSize: 12,
-    color: COLORS.primary,
-    marginTop: 2,
-  },
-  chevron: {
+  statePillText: {
+    color: "#fff",
     fontSize: 22,
-    color: COLORS.textSecondary,
-    marginLeft: 8,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  zonesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 10,
   },
 });

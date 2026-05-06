@@ -1,82 +1,88 @@
-import { useState, useCallback, useRef } from "react";
-import { View, Text, TouchableOpacity, Alert, StyleSheet } from "react-native";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { View, Text, Alert, StyleSheet, ScrollView } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { COLORS, TOGGLE_THROTTLE_MS } from "../constants";
+import {
+  COLORS,
+  TOGGLE_THROTTLE_MS,
+  ACTUATOR_VERIFY_DELAY_MS,
+  ACTUATOR_VERIFY_TIMEOUT_MS,
+} from "../constants";
 import { useHubDataStore } from "../stores/hubDataStore";
 import { toggleRelay } from "../services/hubDataService";
 import { useHubStore } from "../stores/hubStore";
+import { Card, IconBadge, ZonaPill, BigButton } from "../components/ui";
+import { IcoPower } from "../components/icons";
 import type { RootStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ActuatorDetail">;
+
+interface ChannelControlProps {
+  readonly channel: number;
+  readonly commandState: boolean;
+  readonly inputState: boolean;
+  readonly disabled: boolean;
+  readonly verifying: boolean;
+  readonly onToggle: () => void;
+}
 
 function ChannelControl({
   channel,
   commandState,
   inputState,
   disabled,
+  verifying,
   onToggle,
-}: {
-  channel: number;
-  commandState: boolean;
-  inputState: boolean;
-  disabled: boolean;
-  onToggle: () => void;
-}) {
-  const hasDiscrepancy = commandState !== inputState;
+}: ChannelControlProps) {
+  const hasDiscrepancy = !verifying && commandState !== inputState;
+  const on = commandState;
+  const bg = on ? COLORS.actuatorSoft : "#EEEAE0";
+  const fg = on ? COLORS.actuator : COLORS.actuatorOff;
 
   return (
-    <View style={styles.channelCard}>
-      <Text style={styles.channelTitle}>Canal {channel + 1}</Text>
-
-      <View style={styles.statesRow}>
-        <View style={styles.stateBlock}>
-          <Text style={styles.stateLabel}>Comando</Text>
-          <View
-            style={[
-              styles.stateIndicator,
-              { backgroundColor: commandState ? COLORS.success : COLORS.disconnected },
-            ]}
-          >
-            <Text style={styles.stateIndicatorText}>
-              {commandState ? "ON" : "OFF"}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.stateBlock}>
-          <Text style={styles.stateLabel}>Estado real</Text>
-          <View
-            style={[
-              styles.stateIndicator,
-              { backgroundColor: inputState ? COLORS.success : COLORS.disconnected },
-            ]}
-          >
-            <Text style={styles.stateIndicatorText}>
-              {inputState ? "ON" : "OFF"}
-            </Text>
-          </View>
+    <Card style={styles.channelCard}>
+      <View style={styles.channelHero}>
+        <IconBadge bg={bg} size={120}>
+          <IcoPower size={84} color={fg} />
+        </IconBadge>
+        <Text style={styles.channelTitle}>Canal {channel + 1}</Text>
+        <View style={[styles.statePill, { backgroundColor: fg }]}>
+          <Text style={styles.statePillText}>
+            {on ? "ENCENDIDO" : "APAGADO"}
+          </Text>
         </View>
       </View>
 
-      {hasDiscrepancy && (
-        <View style={styles.discrepancyBanner}>
-          <Text style={styles.discrepancyText}>
-            Discrepancia: el estado real no coincide con el comando enviado
+      {verifying && (
+        <View style={styles.infoBanner}>
+          <Text style={styles.infoText}>
+            Verificando estado real del actuador…
           </Text>
         </View>
       )}
 
-      <TouchableOpacity
-        style={[styles.toggleBtn, disabled && styles.toggleBtnDisabled]}
+      {hasDiscrepancy && (
+        <View style={styles.warnBanner}>
+          <Text style={styles.warnText}>
+            El estado real no coincide con el comando. Revisá el cableado.
+          </Text>
+        </View>
+      )}
+
+      <BigButton
+        label={on ? "Apagar" : "Encender"}
+        color={on ? COLORS.error : COLORS.primary}
         onPress={onToggle}
         disabled={disabled}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.toggleBtnText}>
-          {commandState ? "Apagar" : "Encender"}
+        accessibilityLabel={
+          on ? `Apagar canal ${channel + 1}` : `Encender canal ${channel + 1}`
+        }
+      />
+      {disabled && !verifying && (
+        <Text style={styles.disabledHint}>
+          Esperá unos segundos antes de volver a tocar.
         </Text>
-      </TouchableOpacity>
-    </View>
+      )}
+    </Card>
   );
 }
 
@@ -89,48 +95,99 @@ export function ActuatorDetailScreen({ route, navigation }: Props) {
     s.hubs.find((h) => h.hash === route.params.hubHash)
   );
   const [throttled, setThrottled] = useState(false);
+  const [verifying, setVerifying] = useState<[boolean, boolean]>([false, false]);
   const throttleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const verifyTimers = useRef<Array<ReturnType<typeof setTimeout> | null>>([
+    null,
+    null,
+    null,
+    null,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (throttleTimer.current) clearTimeout(throttleTimer.current);
+      verifyTimers.current.forEach((t) => {
+        if (t) clearTimeout(t);
+      });
+    };
+  }, []);
+
+  const setVerifyingChannel = useCallback((ch: number, value: boolean) => {
+    setVerifying((prev) => {
+      const next: [boolean, boolean] = [prev[0], prev[1]];
+      next[ch] = value;
+      return next;
+    });
+  }, []);
 
   const handleToggle = useCallback(
     async (ch: number) => {
       if (!hub || !relay) return;
 
       setThrottled(true);
+      setVerifyingChannel(ch, true);
+
       try {
         const result = await toggleRelay(hub.ip, relayAddress, ch);
-        if (result === "OK") {
-          // Mock: invertir estado localmente
+        if (result !== "OK") {
+          throw new Error("Hub rechazó el comando");
+        }
+
+        // Canal 1: comando aplicado de forma optimista
+        useHubDataStore.setState((state) => ({
+          relays: state.relays.map((r) => {
+            if (r.address !== relayAddress) return r;
+            const newState: [boolean, boolean] = [r.state[0], r.state[1]];
+            newState[ch] = !newState[ch];
+            return { ...r, state: newState };
+          }),
+        }));
+
+        // Canal 2: verificación diferida del estado real reportado por el hub
+        const verifyIdx = ch * 2;
+        verifyTimers.current[verifyIdx] = setTimeout(() => {
           useHubDataStore.setState((state) => ({
             relays: state.relays.map((r) => {
               if (r.address !== relayAddress) return r;
-              const newState: [boolean, boolean] = [r.state[0], r.state[1]];
-              newState[ch] = !newState[ch];
-              const newInput: [boolean, boolean] = [r.input_state[0], r.input_state[1]];
-              newInput[ch] = !newInput[ch];
-              return { ...r, state: newState, input_state: newInput };
+              const newInput: [boolean, boolean] = [
+                r.input_state[0],
+                r.input_state[1],
+              ];
+              newInput[ch] = r.state[ch];
+              return { ...r, input_state: newInput };
             }),
           }));
-        }
+          setVerifyingChannel(ch, false);
+        }, ACTUATOR_VERIFY_DELAY_MS);
+
+        // Timeout de seguridad: si tras la ventana sigue sin verificar, alerta
+        verifyTimers.current[verifyIdx + 1] = setTimeout(() => {
+          const current = useHubDataStore
+            .getState()
+            .relays.find((r) => r.address === relayAddress);
+          if (current && current.state[ch] !== current.input_state[ch]) {
+            setVerifyingChannel(ch, false);
+            Alert.alert(
+              "Estado no confirmado",
+              "El hub no devolvió el estado real del canal a tiempo."
+            );
+          }
+        }, ACTUATOR_VERIFY_TIMEOUT_MS);
       } catch {
-        Alert.alert("Error", "No se pudo ejecutar el comando. Verificá la conexión.");
+        setVerifyingChannel(ch, false);
+        Alert.alert(
+          "Error",
+          "No se pudo ejecutar el comando. Verificá la conexión."
+        );
       } finally {
         throttleTimer.current = setTimeout(() => {
           setThrottled(false);
         }, TOGGLE_THROTTLE_MS);
       }
     },
-    [hub, relay, relayAddress]
+    [hub, relay, relayAddress, setVerifyingChannel]
   );
-
-  // Limpiar timer en unmount
-  // (useRef no necesita cleanup en dependency, pero sí al desmontar)
-  const cleanupRef = useRef(() => {
-    if (throttleTimer.current) clearTimeout(throttleTimer.current);
-  });
-  // Registrar cleanup una sola vez
-  useState(() => {
-    return () => cleanupRef.current();
-  });
 
   if (!relay) {
     return (
@@ -146,48 +203,49 @@ export function ActuatorDetailScreen({ route, navigation }: Props) {
   const zones = relay.zones ?? [];
 
   return (
-    <View style={styles.container}>
-      {/* Info */}
-      <View style={styles.infoCard}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+    >
+      <Card style={styles.infoCard}>
         <Text style={styles.alias}>{relay.alias}</Text>
         <Text style={styles.subtitle}>
-          Relé · Dirección {relay.address} · {relay.active ? "Activo" : "Inactivo"}
+          Dirección {relay.address} · {relay.active ? "Activo" : "Inactivo"}
         </Text>
         {zones.length > 0 && (
           <View style={styles.zonesRow}>
             {zones.map((z) => (
-              <View key={z} style={styles.zoneChip}>
-                <Text style={styles.zoneChipText}>{z}</Text>
-              </View>
+              <ZonaPill key={z} name={z} />
             ))}
           </View>
         )}
-      </View>
+      </Card>
 
       {!relay.active && (
-        <View style={styles.inactiveBanner}>
-          <Text style={styles.inactiveBannerText}>
-            Este relé está inactivo o sin comunicación
+        <View style={styles.warnBanner}>
+          <Text style={styles.warnText}>
+            Este relé está inactivo o sin comunicación.
           </Text>
         </View>
       )}
 
-      {/* Canales */}
       <ChannelControl
         channel={0}
         commandState={relay.state[0]}
         inputState={relay.input_state[0]}
-        disabled={throttled || !relay.active}
+        disabled={throttled || verifying[0] || !relay.active}
+        verifying={verifying[0]}
         onToggle={() => handleToggle(0)}
       />
       <ChannelControl
         channel={1}
         commandState={relay.state[1]}
         inputState={relay.input_state[1]}
-        disabled={throttled || !relay.active}
+        disabled={throttled || verifying[1] || !relay.active}
+        verifying={verifying[1]}
         onToggle={() => handleToggle(1)}
       />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -196,11 +254,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  content: {
+    padding: 16,
+    gap: 14,
+    paddingBottom: 32,
+  },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
+    backgroundColor: COLORS.background,
   },
   errorText: {
     fontSize: 16,
@@ -210,22 +274,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 15,
     color: COLORS.primary,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   infoCard: {
-    backgroundColor: COLORS.surface,
-    margin: 16,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    gap: 4,
   },
   alias: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     color: COLORS.text,
   },
   subtitle: {
@@ -235,99 +291,56 @@ const styles = StyleSheet.create({
   },
   zonesRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
-    marginTop: 10,
+    marginTop: 12,
   },
-  zoneChip: {
-    backgroundColor: "#E8F5E9",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  warnBanner: {
+    backgroundColor: COLORS.warningSoft,
+    borderRadius: 14,
+    padding: 14,
   },
-  zoneChipText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: "500",
-  },
-  inactiveBanner: {
-    backgroundColor: "#FFF3E0",
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 10,
-    padding: 12,
-  },
-  inactiveBannerText: {
-    fontSize: 13,
+  warnText: {
+    fontSize: 14,
+    fontWeight: "700",
     color: COLORS.warning,
-    fontWeight: "500",
+  },
+  infoBanner: {
+    backgroundColor: COLORS.actuatorSoft,
+    borderRadius: 14,
+    padding: 14,
+  },
+  infoText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.actuator,
   },
   channelCard: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 16,
-    marginVertical: 6,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    gap: 16,
+  },
+  channelHero: {
+    alignItems: "center",
+    gap: 12,
   },
   channelTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: "700",
     color: COLORS.text,
-    marginBottom: 12,
   },
-  statesRow: {
-    flexDirection: "row",
-    gap: 16,
-    marginBottom: 12,
+  statePill: {
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    borderRadius: 999,
   },
-  stateBlock: {
-    flex: 1,
-    alignItems: "center",
+  statePillText: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: 0.6,
   },
-  stateLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 6,
-  },
-  stateIndicator: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  stateIndicatorText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.surface,
-  },
-  discrepancyBanner: {
-    backgroundColor: "#FFF3E0",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-  },
-  discrepancyText: {
+  disabledHint: {
     fontSize: 13,
-    color: COLORS.warning,
-    fontWeight: "500",
-  },
-  toggleBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  toggleBtnDisabled: {
-    backgroundColor: COLORS.textDisabled,
-  },
-  toggleBtnText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.surface,
+    color: COLORS.textMuted,
+    textAlign: "center",
   },
 });

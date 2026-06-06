@@ -43,6 +43,9 @@ interface AlarmCardProps {
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
+  // El hub puede emitir un timestamp opaco (uptime sin NTP) o vacío; en ese
+  // caso `Date` queda inválido. Evitamos mostrar "NaN/NaN NaN:NaN".
+  if (iso === "" || Number.isNaN(d.getTime())) return "—";
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);

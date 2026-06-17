@@ -81,7 +81,7 @@ function getInfluxField(
   if (measurementKey === "temperature") return "temp";
   if (measurementKey === "co2") return "co2";
   if (measurementKey === "pressure") return "press";
-  if (subtype === "capacitive" || subtype === "hd38") return "soil_hum";
+  if (subtype === "capacitive" || subtype === "hd38") return "moisture";
   return "hum";
 }
 

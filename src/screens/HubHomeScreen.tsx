@@ -25,6 +25,7 @@ import { semaforo, type SemaforoState } from "../utils/semaforo";
 import { IcoZona } from "../components/icons";
 import { resolveHubTarget } from "../services/connectivity";
 import { getNotifyBackend } from "../services/notifyApi/backend";
+import { getHubNotifyTopic } from "../services/notifyApi/topic";
 import {
   useZoneStore,
   zoneAssignmentKey,
@@ -32,6 +33,8 @@ import {
 } from "../stores/zoneStore";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HubHome">;
+
+const NOTIFY_POLL_INTERVAL_MS = 30_000;
 
 function resolveFilter(
   initialFilter: RootStackParamList["HubHome"]["filter"]
@@ -85,22 +88,45 @@ export function HubHomeScreen({ navigation, route }: Props) {
 
     navigation.setOptions({ title: hub.name });
     let cancelled = false;
+    let notifyInterval: ReturnType<typeof setInterval> | undefined;
+    let pollingNotifications = false;
 
     void (async () => {
       await loadHubData(resolveHubTarget(connectionMode, hub), connectionMode);
-      // El push por ntfy solo se consulta cuando el backend está activo (http).
-      // En modo mock (default) la app funciona con las alarmas de /actual.
+      // El push por ntfy se consulta sólo en Online: en Directo el teléfono
+      // queda conectado al AP del hub y no tiene salida a internet.
       if (
         !cancelled &&
-        connectionMode === "directo" &&
+        connectionMode === "online" &&
         getNotifyBackend() === "http"
       ) {
-        await pollNotifications(hub.name);
+        const topic = getHubNotifyTopic(hub);
+        const pollTopic = async () => {
+          if (pollingNotifications) {
+            return;
+          }
+          pollingNotifications = true;
+          try {
+            await pollNotifications(topic);
+          } finally {
+            pollingNotifications = false;
+          }
+        };
+
+        await pollTopic();
+        if (!cancelled) {
+          notifyInterval = setInterval(() => {
+            void pollTopic();
+          }, NOTIFY_POLL_INTERVAL_MS);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
+      if (notifyInterval) {
+        clearInterval(notifyInterval);
+      }
       clearData();
     };
   }, [
